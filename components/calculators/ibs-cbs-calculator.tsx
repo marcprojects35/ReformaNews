@@ -61,15 +61,15 @@ export function IbsCbsCalculator({ taxParameters }: IbsCbsCalculatorProps) {
   }
 
   return (
-    <Card className="border-2 border-gray-200 shadow-xl hover:shadow-2xl transition-all duration-300">
-      <CardHeader className="bg-gradient-to-r from-[#FF7A00] to-[#FF9500] text-white rounded-t-lg">
+    <Card className="border-2 border-gray-200 shadow-xl hover:shadow-2xl transition-all duration-300 bg-white dark:bg-gray-900 p-0 gap-0 overflow-hidden">
+      <CardHeader className="bg-gradient-to-r from-[#FFD700] to-[#FFC107] text-gray-900 rounded-t-lg">
         <div className="flex items-center gap-3">
           <div className="bg-white/20 p-3 rounded-lg">
             <Calculator className="h-6 w-6" />
           </div>
           <div>
             <CardTitle className="text-2xl">Calculadora IBS/CBS Manual</CardTitle>
-            <CardDescription className="text-white/90">
+            <CardDescription className="text-gray-700">
               Calcule os impostos com detalhamento estadual e municipal
             </CardDescription>
           </div>
@@ -103,7 +103,7 @@ export function IbsCbsCalculator({ taxParameters }: IbsCbsCalculatorProps) {
 
           <Button
             onClick={calculate}
-            className="w-full bg-gradient-to-r from-[#FF7A00] to-[#FF9500] hover:from-[#FF8800] hover:to-[#FFA000] text-white font-semibold py-6 text-lg shadow-lg"
+            className="w-full bg-gradient-to-r from-[#FFD700] to-[#FFC107] hover:from-[#FFC107] hover:to-[#FFD700] text-gray-900 font-semibold py-6 text-lg shadow-lg"
           >
             Calcular Impostos Detalhados
           </Button>
@@ -167,9 +167,9 @@ export function IbsCbsCalculator({ taxParameters }: IbsCbsCalculatorProps) {
                   <span className="text-lg font-bold text-[#FF7A00]">{formatCurrency(result.total)}</span>
                 </div>
 
-                <div className="flex justify-between items-center p-5 bg-gradient-to-r from-[#FF7A00] to-[#FF9500] rounded-lg mt-4">
-                  <span className="text-sm font-bold text-white">Valor Final (produto + impostos)</span>
-                  <span className="text-2xl font-bold text-white">{formatCurrency(result.finalPrice)}</span>
+                <div className="flex justify-between items-center p-5 bg-gradient-to-r from-[#FFD700] to-[#FFC107] rounded-lg mt-4">
+                  <span className="text-sm font-bold text-gray-900">Valor Final (produto + impostos)</span>
+                  <span className="text-2xl font-bold text-gray-900">{formatCurrency(result.finalPrice)}</span>
                 </div>
               </div>
 

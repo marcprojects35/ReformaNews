@@ -45,15 +45,15 @@ export function SplitPaymentSimulator() {
   }
 
   return (
-    <Card className="border-2 border-gray-200 shadow-xl hover:shadow-2xl transition-all duration-300">
-      <CardHeader className="bg-gradient-to-r from-[#0046B3] to-[#0046B3]/90 text-white rounded-t-lg">
+    <Card className="border-2 border-gray-200 shadow-xl hover:shadow-2xl transition-all duration-300 bg-white dark:bg-gray-900 p-0 gap-0 overflow-hidden">
+      <CardHeader className="bg-gradient-to-r from-[#FFD700] to-[#FFC107] text-gray-900 rounded-t-lg">
         <div className="flex items-center gap-3">
           <div className="bg-white/20 p-3 rounded-lg">
             <CreditCard className="h-6 w-6" />
           </div>
           <div>
             <CardTitle className="text-2xl">Simulador Split Payment</CardTitle>
-            <CardDescription className="text-white/90">
+            <CardDescription className="text-gray-700">
               Veja como funciona o pagamento parcelado com IBS/CBS
             </CardDescription>
           </div>
@@ -92,7 +92,7 @@ export function SplitPaymentSimulator() {
 
         <Button
           onClick={simulate}
-          className="w-full bg-gradient-to-r from-[#0046B3] to-[#0046B3]/90 hover:from-[#0046B3]/90 hover:to-[#0046B3] text-white font-semibold py-6 text-lg shadow-lg"
+          className="w-full bg-gradient-to-r from-[#FFD700] to-[#FFC107] hover:from-[#FFC107] hover:to-[#FFD700] text-gray-900 font-semibold py-6 text-lg shadow-lg"
         >
           Simular Split Payment
         </Button>
