@@ -11,6 +11,14 @@ const nextConfig = {
     '127.0.0.1',
     process.env.REPLIT_DEV_DOMAIN,
   ].filter(Boolean),
+  async rewrites() {
+    return [
+      {
+        source: '/uploads/:path*',
+        destination: 'http://localhost:8001/uploads/:path*',
+      },
+    ]
+  },
   async headers() {
     return [
       {

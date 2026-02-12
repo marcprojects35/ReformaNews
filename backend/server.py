@@ -61,7 +61,7 @@ app.add_middleware(
 )
 
 # Upload directory
-UPLOAD_DIR = Path("/app/public/uploads")
+UPLOAD_DIR = Path(__file__).parent.parent / "public" / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 @app.on_event("startup")
@@ -1552,6 +1552,9 @@ async def delete_glossary_term(
     await db.delete(term)
     await db.commit()
     return {"message": "Termo deletado com sucesso"}
+
+# Serve uploaded files
+app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 
 @app.get("/")
 async def root():

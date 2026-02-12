@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Menu, Search, X, Home, Wrench, Newspaper, BookOpen, MessageCircle, Settings } from "lucide-react"
+import { Menu, Search, X, Home, Wrench, Newspaper, BookOpen, MessageCircle, Settings, ChevronDown, PlayCircle, Calculator, FileText } from "lucide-react"
 import Image from "next/image"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
@@ -10,6 +10,8 @@ import Link from "next/link"
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [conteudoOpen, setConteudoOpen] = useState(false)
+  const [mobileConteudoOpen, setMobileConteudoOpen] = useState(false)
   const [settings, setSettings] = useState({
     whatsapp_number: "",
     logo_url: "",
@@ -73,13 +75,45 @@ export function Header() {
                 Notícias
                 <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#FFD700] group-hover:w-full transition-all duration-300"></span>
               </Link>
-              <Link
-                href="/ferramentas"
-                className="text-sm font-semibold text-gray-200 hover:text-[#FFD700] transition-all duration-300 relative group"
+              <div
+                className="relative"
+                onMouseEnter={() => setConteudoOpen(true)}
+                onMouseLeave={() => setConteudoOpen(false)}
               >
-                Ferramentas
-                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#FFD700] group-hover:w-full transition-all duration-300"></span>
-              </Link>
+                <button
+                  className="text-sm font-semibold text-gray-200 hover:text-[#FFD700] transition-all duration-300 relative group flex items-center gap-1"
+                >
+                  Conteúdo
+                  <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-300 ${conteudoOpen ? 'rotate-180' : ''}`} />
+                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#FFD700] group-hover:w-full transition-all duration-300"></span>
+                </button>
+
+                {conteudoOpen && (
+                  <div className="absolute top-full left-0 mt-2 w-56 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl shadow-black/40 py-2 z-50 animate-fade-in">
+                    <Link
+                      href="/aulas-e-podcasts"
+                      className="flex items-center gap-3 px-4 py-3 text-sm text-gray-200 hover:bg-gray-700 hover:text-[#FFD700] transition-colors"
+                    >
+                      <PlayCircle className="h-4 w-4 text-[#FFD700]" />
+                      Aulas e Podcasts
+                    </Link>
+                    <Link
+                      href="/ferramentas"
+                      className="flex items-center gap-3 px-4 py-3 text-sm text-gray-200 hover:bg-gray-700 hover:text-[#FFD700] transition-colors"
+                    >
+                      <Calculator className="h-4 w-4 text-[#FFD700]" />
+                      Calculadoras
+                    </Link>
+                    <Link
+                      href="/artigos"
+                      className="flex items-center gap-3 px-4 py-3 text-sm text-gray-200 hover:bg-gray-700 hover:text-[#FFD700] transition-colors"
+                    >
+                      <FileText className="h-4 w-4 text-[#FFD700]" />
+                      Artigos
+                    </Link>
+                  </div>
+                )}
+              </div>
               <Link
                 href="/biblioteca"
                 className="text-sm font-semibold text-gray-200 hover:text-[#FFD700] transition-all duration-300 relative group"
@@ -185,14 +219,46 @@ export function Header() {
                   <span className="font-semibold">Notícias</span>
                 </Link>
 
-                <Link
-                  href="/ferramentas"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-3 px-4 py-3 text-gray-200 hover:bg-gray-800 rounded-lg transition-colors"
-                >
-                  <Wrench className="h-5 w-5 text-[#FFD700]" />
-                  <span className="font-semibold">Ferramentas</span>
-                </Link>
+                <div>
+                  <button
+                    onClick={() => setMobileConteudoOpen(!mobileConteudoOpen)}
+                    className="flex items-center justify-between w-full px-4 py-3 text-gray-200 hover:bg-gray-800 rounded-lg transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <BookOpen className="h-5 w-5 text-[#FFD700]" />
+                      <span className="font-semibold">Conteúdo</span>
+                    </div>
+                    <ChevronDown className={`h-4 w-4 transition-transform duration-300 ${mobileConteudoOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  {mobileConteudoOpen && (
+                    <div className="ml-8 space-y-1 mt-1">
+                      <Link
+                        href="/aulas-e-podcasts"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-gray-300 hover:bg-gray-800 rounded-lg transition-colors"
+                      >
+                        <PlayCircle className="h-4 w-4 text-[#FFD700]" />
+                        <span className="text-sm font-medium">Aulas e Podcasts</span>
+                      </Link>
+                      <Link
+                        href="/ferramentas"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-gray-300 hover:bg-gray-800 rounded-lg transition-colors"
+                      >
+                        <Calculator className="h-4 w-4 text-[#FFD700]" />
+                        <span className="text-sm font-medium">Calculadoras</span>
+                      </Link>
+                      <Link
+                        href="/artigos"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-gray-300 hover:bg-gray-800 rounded-lg transition-colors"
+                      >
+                        <FileText className="h-4 w-4 text-[#FFD700]" />
+                        <span className="text-sm font-medium">Artigos</span>
+                      </Link>
+                    </div>
+                  )}
+                </div>
 
                 <Link
                   href="/biblioteca"

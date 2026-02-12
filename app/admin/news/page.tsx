@@ -31,6 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { ArrowLeft, Plus, Edit, Trash2, Loader2 } from "lucide-react"
+import { FileUpload } from "@/components/ui/file-upload"
 
 interface News {
   id: number
@@ -400,11 +401,11 @@ export default function AdminNews() {
             </div>
 
             <div>
-              <label className="text-sm font-medium text-gray-300 mb-2 block">URL da Imagem (opcional)</label>
-              <Input
+              <label className="text-sm font-medium text-gray-300 mb-2 block">Imagem (opcional)</label>
+              <FileUpload
                 value={formData.image_url}
-                onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                className="bg-gray-900 border-gray-600 text-white"
+                onChange={(url) => setFormData({ ...formData, image_url: url })}
+                accept="image/*"
                 placeholder="https://exemplo.com/imagem.jpg"
               />
             </div>

@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { ArrowLeft, Plus, Trash2, Loader2, Newspaper, Edit, FileText, Eye, Download } from "lucide-react"
+import { FileUpload } from "@/components/ui/file-upload"
 
 interface Newsletter {
   id: number
@@ -420,34 +421,28 @@ export default function AdminNewsletter() {
 
             <div>
               <label className="text-sm font-medium text-gray-300 mb-2 block">
-                URL da Imagem de Capa *
+                Imagem de Capa *
               </label>
-              <Input
+              <FileUpload
                 value={formData.image_url}
-                onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                className="bg-gray-900 border-gray-600 text-white"
+                onChange={(url) => setFormData({ ...formData, image_url: url })}
+                accept="image/*"
                 placeholder="https://exemplo.com/imagem-capa.jpg"
                 required
               />
-              <p className="text-xs text-gray-500 mt-1">
-                Imagem de preview do jornal
-              </p>
             </div>
 
             <div>
               <label className="text-sm font-medium text-gray-300 mb-2 block">
-                URL do PDF *
+                PDF do Jornal *
               </label>
-              <Input
+              <FileUpload
                 value={formData.pdf_url}
-                onChange={(e) => setFormData({ ...formData, pdf_url: e.target.value })}
-                className="bg-gray-900 border-gray-600 text-white"
+                onChange={(url) => setFormData({ ...formData, pdf_url: url })}
+                accept="application/pdf"
                 placeholder="https://exemplo.com/jornal.pdf"
                 required
               />
-              <p className="text-xs text-gray-500 mt-1">
-                Link direto para download do PDF
-              </p>
             </div>
 
             <div className="flex items-center gap-3 p-3 bg-gray-900/50 rounded-lg">

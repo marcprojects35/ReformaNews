@@ -16,6 +16,7 @@ import {
   DialogFooter 
 } from "@/components/ui/dialog"
 import { ArrowLeft, Plus, Trash2, Loader2, ChevronUp, ChevronDown, Upload } from "lucide-react"
+import { FileUpload } from "@/components/ui/file-upload"
 
 interface BannerSlide {
   id: number
@@ -342,18 +343,15 @@ export default function AdminBanner() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="text-sm font-medium text-gray-300 mb-2 block">
-                URL da Imagem
+                Imagem
               </label>
-              <Input
+              <FileUpload
                 value={formData.image_url}
-                onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                className="bg-gray-900 border-gray-600 text-white"
+                onChange={(url) => setFormData({ ...formData, image_url: url })}
+                accept="image/*"
                 placeholder="https://exemplo.com/imagem.jpg"
                 required
               />
-              <p className="text-xs text-gray-500 mt-1">
-                Cole a URL completa da imagem
-              </p>
             </div>
 
             <div>

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ArrowLeft, Loader2, Save, Phone, Image as ImageIcon, Globe } from "lucide-react"
+import { FileUpload } from "@/components/ui/file-upload"
 
 interface Setting {
   id: number
@@ -176,30 +177,13 @@ export default function AdminSettings() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Input
+              <FileUpload
                 value={formData.logo_url}
-                onChange={(e) => setFormData({ ...formData, logo_url: e.target.value })}
-                className="bg-gray-900 border-gray-600 text-white"
+                onChange={(url) => setFormData({ ...formData, logo_url: url })}
+                accept="image/*"
                 placeholder="https://exemplo.com/logo.png"
                 required
               />
-              <p className="text-xs text-gray-500 mt-2">
-                Cole a URL completa da imagem da logo
-              </p>
-              {formData.logo_url && (
-                <div className="mt-4 p-4 bg-gray-900 rounded-lg">
-                  <p className="text-xs text-gray-400 mb-2">Pré-visualização:</p>
-                  <img 
-                    src={formData.logo_url} 
-                    alt="Logo preview" 
-                    className="h-12 object-contain"
-                    onError={(e) => {
-                      e.currentTarget.src = ""
-                      e.currentTarget.alt = "Erro ao carregar imagem"
-                    }}
-                  />
-                </div>
-              )}
             </CardContent>
           </Card>
 
