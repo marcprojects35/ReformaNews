@@ -721,44 +721,60 @@ async def fetch_news_from_sources(
     db: AsyncSession = Depends(get_db)
 ):
     from news_ai_service import news_ai_service
-    
-    # Get active sources
-    result = await db.execute(select(NewsSource).where(NewsSource.active == True))
-    sources = result.scalars().all()
-    
-    if not sources:
-        return {"message": "Nenhuma fonte ativa configurada", "processed": 0}
-    
-    # Convert to dict
-    sources_list = [
-        {"id": s.id, "name": s.name, "url": s.url, "active": s.active}
-        for s in sources
-    ]
-    
-    # Fetch news
-    articles = await news_ai_service.fetch_news_from_sources(sources_list)
-    
-    # Process and create pending
-    processed = 0
-    for article in articles:
-        try:
-            success = await news_ai_service.process_and_create_pending(article, db)
-            if success:
-                processed += 1
-        except Exception as e:
-            print(f"Erro ao processar notícia: {e}")
-            continue
-    
-    # Update last_fetch for sources
-    for source in sources:
-        source.last_fetch = datetime.utcnow()
-    await db.commit()
-    
-    return {
-        "message": f"{processed} notícias processadas e adicionadas para aprovação",
-        "processed": processed,
-        "total_fetched": len(articles)
-    }
+
+    try:
+        # Get active sources
+        result = await db.execute(select(NewsSource).where(NewsSource.active == True))
+        sources = result.scalars().all()
+
+        if not sources:
+            return {"message": "Nenhuma fonte ativa configurada", "processed": 0}
+
+        # Convert to dict
+        sources_list = [
+            {"id": s.id, "name": s.name, "url": s.url, "active": s.active}
+            for s in sources
+        ]
+
+        # Fetch news
+        articles = await news_ai_service.fetch_news_from_sources(sources_list)
+
+        # Process and create pending
+        processed = 0
+        errors = 0
+        for article in articles:
+            try:
+                success = await news_ai_service.process_and_create_pending(article, db)
+                if success:
+                    processed += 1
+            except Exception as e:
+                print(f"Erro ao processar notícia: {e}")
+                errors += 1
+                continue
+
+        # Update last_fetch for sources
+        for source in sources:
+            source.last_fetch = datetime.utcnow()
+        await db.commit()
+
+        if len(articles) == 0:
+            return {
+                "message": "Nenhuma notícia encontrada nas fontes configuradas. Verifique se as URLs estão corretas.",
+                "processed": 0,
+                "total_fetched": 0
+            }
+
+        return {
+            "message": f"{processed} notícias processadas e adicionadas para aprovação (de {len(articles)} encontradas)",
+            "processed": processed,
+            "total_fetched": len(articles)
+        }
+    except Exception as e:
+        print(f"Erro geral ao buscar notícias: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Erro ao buscar notícias: {str(e)}"
+        )
 
 # ========== NEWSLETTER ENDPOINTS ==========
 

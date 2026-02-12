@@ -155,7 +155,7 @@ export default function AdminSources() {
   const handleFetchNews = async () => {
     setFetching(true)
     const token = localStorage.getItem("admin_token")
-    
+
     try {
       const response = await fetch("http://localhost:8001/api/fetch-news", {
         method: "POST",
@@ -163,11 +163,17 @@ export default function AdminSources() {
       })
 
       const data = await response.json()
+
+      if (!response.ok) {
+        alert(data.detail || "Erro ao buscar notícias no servidor")
+        return
+      }
+
       alert(data.message)
       loadSources()
     } catch (error) {
       console.error("Erro ao buscar notícias:", error)
-      alert("Erro ao buscar notícias")
+      alert("Erro de conexão ao buscar notícias. Verifique se o servidor backend está rodando.")
     } finally {
       setFetching(false)
     }

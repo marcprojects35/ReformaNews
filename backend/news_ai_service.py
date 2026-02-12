@@ -1,4 +1,5 @@
 import os
+import asyncio
 from pathlib import Path
 import aiohttp
 from datetime import datetime, timedelta
@@ -174,135 +175,72 @@ class NewsAIService:
         gemini_key = os.getenv("GEMINI_API_KEY", "")
         if gemini_key:
             genai.configure(api_key=gemini_key)
-            self.model = genai.GenerativeModel('gemini-pro')
+            self.model = genai.GenerativeModel('gemini-2.0-flash')
         else:
             self.model = None
     
-    async def fetch_news_from_newsapi(self, query: str = "reforma tributária Brasil") -> List[Dict]:
+    async def fetch_news_from_newsapi(self, query: str = "reforma tributária Brasil", page_size: int = 20) -> List[Dict]:
         """Busca notícias usando NewsAPI"""
         if not self.newsapi_key:
             return []
-        
+
         url = "https://newsapi.org/v2/everything"
         params = {
             "q": query,
             "language": "pt",
             "sortBy": "publishedAt",
-            "pageSize": 20,
+            "pageSize": page_size,
             "apiKey": self.newsapi_key
         }
-        
+
         try:
-            async with aiohttp.ClientSession() as session:
+            timeout = aiohttp.ClientTimeout(total=30)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
                 async with session.get(url, params=params) as response:
                     if response.status == 200:
                         data = await response.json()
                         return data.get("articles", [])
+                    else:
+                        error_text = await response.text()
+                        print(f"NewsAPI erro ({response.status}): {error_text}")
         except Exception as e:
             print(f"Erro ao buscar notícias: {e}")
-        
+
         return []
     
-    async def fetch_news_from_sources(self, sources: List[Dict]) -> List[Dict]:
-        """Busca notícias de múltiplas fontes"""
-        all_articles = []
-        existing_urls = set()
+    def _match_source(self, article: Dict, sources: List[Dict]) -> str:
+        """Verifica se um artigo pertence a uma das fontes configuradas"""
+        article_url = (article.get("url") or "").lower()
+        article_source = (article.get("source", {}).get("name") or "").lower()
 
-        print(f"Iniciando busca em {len(sources)} fontes configuradas...")
-
-        # Buscar em cada fonte configurada
         for source in sources:
             if not source.get("active"):
                 continue
+            source_url = source.get("url", "").lower()
+            source_name = source.get("name", "").lower()
 
-            source_url = source.get("url", "")
-            source_name = source.get("name", "")
-
-            # Extrair domínio da URL
+            # Extrair domínio base da fonte (ex: "globo.com" de "https://g1.globo.com")
             domain = source_url.replace("https://", "").replace("http://", "").split("/")[0]
+            # Pegar domínio raiz (ex: "globo.com" de "g1.globo.com")
+            domain_parts = domain.split(".")
+            root_domain = ".".join(domain_parts[-2:]) if len(domain_parts) >= 2 else domain
 
-            print(f"Buscando notícias de: {source_name} ({domain})")
+            if root_domain in article_url or root_domain in article_source:
+                return source.get("name", "")
+            if source_name in article_source:
+                return source.get("name", "")
 
-            # Buscar notícias deste domínio específico
-            articles = await self.fetch_news_from_newsapi_by_domain(domain)
+        return ""
 
-            for article in articles:
-                url = article.get("url")
-                if url and url not in existing_urls:
-                    article["configured_source"] = source_name
-                    all_articles.append(article)
-                    existing_urls.add(url)
-
-        # Se não encontrou nada nas fontes específicas, fazer busca genérica
-        if len(all_articles) == 0:
-            print("Nenhum artigo encontrado nas fontes. Fazendo busca genérica...")
-            generic_articles = await self.fetch_generic_news()
-            for article in generic_articles:
-                url = article.get("url")
-                if url and url not in existing_urls:
-                    article["configured_source"] = "Busca Genérica"
-                    all_articles.append(article)
-                    existing_urls.add(url)
-
-        print(f"Total de artigos encontrados: {len(all_articles)}")
-        return all_articles
-
-    async def fetch_generic_news(self) -> List[Dict]:
-        """Busca genérica de notícias sobre reforma tributária"""
-        if not self.newsapi_key:
-            return []
-
-        url = "https://newsapi.org/v2/everything"
+    async def fetch_news_from_sources(self, sources: List[Dict]) -> List[Dict]:
+        """Busca notícias e filtra pelas fontes configuradas"""
         all_articles = []
+        existing_urls = set()
 
-        # Termos de busca genéricos
-        search_terms = [
-            "reforma tributária Brasil",
-            "IBS CBS Brasil",
-            "ICMS imposto Brasil",
-            "tributação Brasil 2024",
-            "nota fiscal eletrônica Brasil",
-            "receita federal tributação",
-            "simples nacional imposto"
-        ]
+        active_sources = [s for s in sources if s.get("active")]
+        print(f"Iniciando busca com {len(active_sources)} fontes ativas...")
 
-        for term in search_terms:
-            params = {
-                "q": term,
-                "language": "pt",
-                "sortBy": "publishedAt",
-                "pageSize": 30,
-                "apiKey": self.newsapi_key
-            }
-
-            try:
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(url, params=params) as response:
-                        if response.status == 200:
-                            data = await response.json()
-                            articles = data.get("articles", [])
-                            print(f"Busca genérica '{term}': {len(articles)} artigos")
-
-                            existing_urls = {a.get("url") for a in all_articles}
-                            for article in articles:
-                                if article.get("url") not in existing_urls:
-                                    all_articles.append(article)
-            except Exception as e:
-                print(f"Erro na busca genérica '{term}': {e}")
-
-        print(f"Busca genérica total: {len(all_articles)} artigos únicos")
-        return all_articles
-    
-    async def fetch_news_from_newsapi_by_domain(self, domain: str) -> List[Dict]:
-        """Busca notícias de um domínio específico"""
-        if not self.newsapi_key:
-            print("NEWSAPI_KEY não configurada")
-            return []
-
-        url = "https://newsapi.org/v2/everything"
-        all_articles = []
-
-        # Fazer múltiplas buscas com diferentes keywords para maximizar resultados
+        # Busca geral com vários termos (o filtro domains da NewsAPI não funciona bem com domínios BR)
         search_queries = [
             "reforma tributária",
             "IBS CBS imposto",
@@ -313,37 +251,56 @@ class NewsAIService:
             "alíquota tributo"
         ]
 
-        for query_term in search_queries:
-            params = {
-                "q": query_term,
-                "domains": domain,
-                "language": "pt",
-                "sortBy": "publishedAt",
-                "pageSize": 20,
-                "apiKey": self.newsapi_key
-            }
+        for query in search_queries:
+            articles = await self.fetch_news_from_newsapi(query, page_size=50)
+            for article in articles:
+                url = article.get("url")
+                if url and url not in existing_urls:
+                    # Tentar associar a uma fonte configurada
+                    matched_source = self._match_source(article, active_sources)
+                    if matched_source:
+                        article["configured_source"] = matched_source
+                    else:
+                        article["configured_source"] = article.get("source", {}).get("name", "Outras Fontes")
+                    all_articles.append(article)
+                    existing_urls.add(url)
 
-            try:
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(url, params=params) as response:
-                        if response.status == 200:
-                            data = await response.json()
-                            articles = data.get("articles", [])
-                            print(f"Busca '{query_term}' em {domain}: {len(articles)} artigos encontrados")
+        print(f"Total de artigos encontrados: {len(all_articles)}")
 
-                            # Evitar duplicatas
-                            existing_urls = {a.get("url") for a in all_articles}
-                            for article in articles:
-                                if article.get("url") not in existing_urls:
-                                    all_articles.append(article)
-                                    existing_urls.add(article.get("url"))
-                        else:
-                            error_data = await response.text()
-                            print(f"Erro na API NewsAPI ({response.status}): {error_data}")
-            except Exception as e:
-                print(f"Erro ao buscar '{query_term}' de {domain}: {e}")
+        # Log de artigos por fonte
+        source_counts = {}
+        for a in all_articles:
+            src = a.get("configured_source", "?")
+            source_counts[src] = source_counts.get(src, 0) + 1
+        for src, count in sorted(source_counts.items(), key=lambda x: -x[1]):
+            print(f"  {src}: {count} artigos")
 
-        print(f"Total de artigos únicos de {domain}: {len(all_articles)}")
+        return all_articles
+
+    async def fetch_generic_news(self) -> List[Dict]:
+        """Busca genérica de notícias sobre reforma tributária (fallback)"""
+        if not self.newsapi_key:
+            return []
+
+        all_articles = []
+
+        search_terms = [
+            "reforma tributária Brasil",
+            "IBS CBS Brasil",
+            "ICMS imposto Brasil",
+            "nota fiscal eletrônica Brasil",
+            "receita federal tributação",
+            "simples nacional imposto"
+        ]
+
+        for term in search_terms:
+            articles = await self.fetch_news_from_newsapi(term, page_size=30)
+            existing_urls = {a.get("url") for a in all_articles}
+            for article in articles:
+                if article.get("url") not in existing_urls:
+                    all_articles.append(article)
+
+        print(f"Busca genérica total: {len(all_articles)} artigos únicos")
         return all_articles
     
     def check_relevance(self, article: Dict) -> bool:
@@ -406,7 +363,7 @@ FORMATO DE RESPOSTA (JSON):
 Responda APENAS com o JSON, sem texto adicional."""
 
         try:
-            response = self.model.generate_content(prompt)
+            response = await asyncio.to_thread(self.model.generate_content, prompt)
             text = response.text.strip()
             
             # Remover possíveis markdown

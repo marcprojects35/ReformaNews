@@ -277,21 +277,21 @@ export function CalculadoraTributariaAutomatica({ taxParameters }: CalculadoraTr
   }
 
   return (
-    <Card className="border-gray-200 dark:border-gray-700 lg:col-span-2">
-      <CardHeader>
+    <Card className="border-2 border-gray-200 dark:border-gray-700 lg:col-span-2 shadow-xl hover:shadow-2xl transition-all duration-300 bg-white dark:bg-gray-900 p-0 gap-0 overflow-hidden">
+      <CardHeader className="bg-gradient-to-r from-[#FFD700] to-[#FFC107] text-gray-900">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-r from-[#FFD700] to-[#FFC107] rounded-lg">
-            <Calculator className="h-5 w-5 text-gray-900" />
+          <div className="bg-white/20 p-3 rounded-lg">
+            <Calculator className="h-6 w-6 text-gray-900" />
           </div>
           <div>
-            <CardTitle>Calculadora Tributaria Automatica</CardTitle>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            <CardTitle className="text-2xl">Calculadora Tributaria Automatica</CardTitle>
+            <p className="text-sm text-gray-700 mt-1">
               Pesquise por nome, GTIN ou NCM e calcule automaticamente os impostos (102.070 produtos)
             </p>
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="p-6 space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>Buscar Produto</Label>
@@ -502,7 +502,7 @@ export function CalculadoraTributariaAutomatica({ taxParameters }: CalculadoraTr
             <Button 
               onClick={gerarPDF}
               variant="outline"
-              className="w-full border-[#FF7A00] text-[#FF7A00] hover:bg-[#FF7A00] hover:text-white"
+              className="w-full border-[#FFD700] text-gray-900 hover:bg-gradient-to-r hover:from-[#FFD700] hover:to-[#FFC107]"
             >
               <Download className="h-4 w-4 mr-2" />
               Baixar Relatorio

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { ArrowRight, Calendar, TrendingUp, Loader2 } from "lucide-react"
+import { ArrowRight, Calendar, TrendingUp, Loader2, ImageIcon } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -122,6 +122,22 @@ export function NewsGrid({ searchQuery = "", activeFilters = [] }: NewsGridProps
               className="group hover:shadow-2xl transition-all duration-500 border border-gray-700 hover:border-[#FFD700]/50 animate-fade-in-up overflow-hidden bg-gray-800"
               style={{ animationDelay: `${index * 100}ms` }}
             >
+              {/* Image Preview */}
+              <div className="relative w-full h-48 overflow-hidden">
+                {article.image_url ? (
+                  <img
+                    src={article.image_url}
+                    alt={article.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center">
+                    <ImageIcon className="w-12 h-12 text-gray-600" />
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-gray-800/80 to-transparent" />
+              </div>
+
               <CardContent className="p-7">
                 <div className="flex items-center gap-3 mb-4">
                   <Badge
