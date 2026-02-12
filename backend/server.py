@@ -15,10 +15,15 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, delete
 from datetime import timedelta, datetime
-from typing import List
+from typing import List, Optional
 import shutil
 
-from database import init_db, get_db, User, News, BannerSlide, Settings, NewsSource, PendingNews, Newsletter, FiscalCalendar, WeeklyHighlight
+from database import (
+    init_db, get_db, get_chat_db, engine, chat_engine,
+    User, News, BannerSlide, Settings, NewsSource, PendingNews, Newsletter,
+    FiscalCalendar, WeeklyHighlight, ChatKnowledge, UnansweredQuestion, ChatSettings,
+    CalculatorConfig, CalculatorParameters, Document, FAQ, GlossaryTerm
+)
 from schemas import (
     UserLogin, Token, NewsCreate, NewsUpdate, NewsResponse,
     BannerSlideCreate, BannerSlideUpdate, BannerSlideResponse, BannerReorder,
@@ -27,7 +32,17 @@ from schemas import (
     PendingNewsResponse, PendingNewsUpdate,
     NewsletterCreate, NewsletterUpdate, NewsletterResponse,
     FiscalCalendarCreate, FiscalCalendarUpdate, FiscalCalendarResponse,
-    WeeklyHighlightCreate, WeeklyHighlightUpdate, WeeklyHighlightResponse
+    WeeklyHighlightCreate, WeeklyHighlightUpdate, WeeklyHighlightResponse,
+    ChatKnowledgeCreate, ChatKnowledgeUpdate, ChatKnowledgeResponse,
+    UnansweredQuestionResponse,
+    ChatSettingsUpdate, ChatSettingsResponse,
+    ChatRequest, ChatResponse, ChatTrainRequest, ChatTrainResponse,
+    ChatSearchGoogleRequest, ChatSearchGoogleResponse,
+    CalculatorConfigResponse, CalculatorConfigUpdate,
+    CalculatorParameterResponse, CalculatorParametersBulkUpdate,
+    DocumentCreate, DocumentUpdate, DocumentResponse,
+    FAQCreate, FAQUpdate, FAQResponse,
+    GlossaryTermCreate, GlossaryTermUpdate, GlossaryTermResponse
 )
 from auth import (
     authenticate_user, create_access_token, get_current_user,
@@ -76,9 +91,267 @@ async def startup():
                 db.add(setting)
             await db.commit()
 
-# Store engine reference for startup
-from database import engine
+    # Initialize chat settings (usando banco de chat PostgreSQL ia_db)
+    async with AsyncSession(bind=app.state.chat_engine) as db:
+        result = await db.execute(select(ChatSettings))
+        if not result.scalar_one_or_none():
+            chat_settings = ChatSettings(
+                welcome_message="Olá! Sou a IA Tributária do Reforma Tributária News. Estou aqui para ajudar com suas dúvidas sobre IBS/CBS, GTIN, Split Payment, Imposto Seletivo e muito mais. Como posso ajudar você?",
+                fallback_message="Desculpe, não consegui encontrar uma resposta para sua pergunta. Nossa equipe está pronta para ajudar pessoalmente!",
+                whatsapp_number="5534998623164",
+                active=True
+            )
+            db.add(chat_settings)
+            await db.commit()
+
+    # Initialize default knowledge base (usando banco de chat PostgreSQL ia_db)
+    async with AsyncSession(bind=app.state.chat_engine) as db:
+        result = await db.execute(select(ChatKnowledge))
+        if not result.scalars().first():
+            default_knowledge = [
+                ChatKnowledge(
+                    question="O que é IBS?",
+                    answer="""**IBS (Imposto sobre Bens e Serviços)**
+
+O IBS é um tributo subnacional que faz parte da Reforma Tributária brasileira. Aqui estão os principais pontos:
+
+**O que substitui:**
+- ICMS (estadual)
+- ISS (municipal)
+
+**Alíquotas:**
+- IBS Estadual: 9%
+- IBS Municipal: 8%
+- Total: 17%
+
+**Características:**
+- Será cobrado no destino (local de consumo)
+- Não-cumulatividade plena com direito a crédito de todas aquisições
+- Alíquota única por ente federado
+
+**Cronograma:**
+- 2026: Período de testes (0,1%)
+- 2029-2033: Transição gradual
+- 2033: Sistema completo
+
+Para mais informações, entre em contato: WhatsApp (34) 99862-3164""",
+                    keywords=["ibs", "imposto sobre bens", "icms", "iss", "tributo subnacional"],
+                    category="ibs",
+                    source="manual"
+                ),
+                ChatKnowledge(
+                    question="O que é CBS?",
+                    answer="""**CBS (Contribuição sobre Bens e Serviços)**
+
+A CBS é um tributo federal que faz parte da Reforma Tributária brasileira. Veja os detalhes:
+
+**O que substitui:**
+- PIS
+- COFINS
+
+**Alíquota:**
+- 10% (federal)
+
+**Características:**
+- Base de cálculo idêntica ao IBS
+- Não-cumulatividade plena
+- Crédito financeiro de todas aquisições
+
+**Cronograma:**
+- 2026: Período de testes (0,9%)
+- 2027: CBS integral em vigor
+
+**IVA Dual:**
+O modelo brasileiro combina IBS + CBS = ~27%, formando o chamado IVA Dual.
+
+Para mais informações, entre em contato: WhatsApp (34) 99862-3164""",
+                    keywords=["cbs", "contribuição sobre bens", "pis", "cofins", "tributo federal"],
+                    category="cbs",
+                    source="manual"
+                ),
+                ChatKnowledge(
+                    question="O que é IBS e CBS?",
+                    answer="""**IBS e CBS - Os Novos Tributos da Reforma**
+
+A Reforma Tributária brasileira cria dois novos tributos que formam o chamado **IVA Dual**:
+
+**IBS (Imposto sobre Bens e Serviços)**
+- Tributo subnacional (estados e municípios)
+- Substitui ICMS + ISS
+- Alíquota: 17% (9% estadual + 8% municipal)
+- Implementação: 2029 a 2033
+
+**CBS (Contribuição sobre Bens e Serviços)**
+- Tributo federal
+- Substitui PIS + COFINS
+- Alíquota: 10%
+- Implementação: 2027
+
+**Juntos (IVA Dual):**
+- Total: ~27%
+- Calculados "por fora"
+- Não-cumulatividade plena
+- Cobrança no destino
+
+**Cronograma:**
+- 2026: Testes (1%)
+- 2027: CBS integral
+- 2029-2033: Transição IBS
+- 2033: Sistema completo
+
+Para mais informações, entre em contato: WhatsApp (34) 99862-3164""",
+                    keywords=["ibs", "cbs", "ibs e cbs", "iva dual", "novos tributos"],
+                    category="reforma",
+                    source="manual"
+                ),
+                ChatKnowledge(
+                    question="O que é GTIN?",
+                    answer="""**GTIN (Global Trade Item Number)**
+
+O GTIN é conhecido como o "CPF do produto" - um código de barras padrão mundial.
+
+**Obrigatoriedade:**
+- Obrigatório em NF-e e NFC-e desde 01/10/2025
+
+**Consequências:**
+- SEFAZ rejeitará notas com GTIN inválido ou inexistente
+- Mesmo NCM pode ter alíquotas diferentes por GTIN
+
+**Importância:**
+- Rastreabilidade de produtos
+- Controle fiscal mais eficiente
+- Padronização internacional
+
+**Ação necessária:**
+Verifique se todos os seus produtos possuem GTIN válido e atualizado no cadastro.
+
+Para mais informações, entre em contato: WhatsApp (34) 99862-3164""",
+                    keywords=["gtin", "codigo de barras", "cpf do produto", "nfe", "nfce"],
+                    category="gtin",
+                    source="manual"
+                ),
+                ChatKnowledge(
+                    question="O que é Split Payment?",
+                    answer="""**Split Payment (Pagamento Dividido)**
+
+O Split Payment é um mecanismo inovador da Reforma Tributária para retenção automática de tributos.
+
+**Como funciona:**
+1. Você efetua um pagamento ao fornecedor
+2. O banco retém automaticamente 27% (IBS+CBS)
+3. Fornecedor recebe o valor líquido imediatamente
+4. Você obtém o crédito tributário gradualmente
+
+**Benefícios:**
+- Reduz sonegação fiscal
+- Simplifica a arrecadação
+- Automatiza o processo tributário
+
+**Implementação:**
+Prevista junto com o novo sistema tributário a partir de 2027.
+
+Para mais informações, entre em contato: WhatsApp (34) 99862-3164""",
+                    keywords=["split payment", "pagamento dividido", "retenção automática", "banco"],
+                    category="split_payment",
+                    source="manual"
+                ),
+                ChatKnowledge(
+                    question="O que é Imposto Seletivo?",
+                    answer="""**Imposto Seletivo**
+
+O Imposto Seletivo é um tributo sobre produtos considerados nocivos à saúde e ao meio ambiente.
+
+**Base Legal:**
+LC 214/2025, artigos 416 a 438
+
+**Produtos tributados:**
+- Bebidas alcoólicas
+- Cigarros e produtos de tabaco
+- Veículos poluentes
+- Embarcações
+- Aeronaves
+
+**Vigência:**
+A partir de 2027
+
+**Alíquotas:**
+Serão definidas por decreto, variando conforme o grau de nocividade do produto.
+
+Para mais informações, entre em contato: WhatsApp (34) 99862-3164""",
+                    keywords=["imposto seletivo", "produtos nocivos", "bebidas", "cigarros", "tabaco"],
+                    category="imposto_seletivo",
+                    source="manual"
+                ),
+                ChatKnowledge(
+                    question="O que é a Reforma Tributária?",
+                    answer="""**Reforma Tributária Brasileira**
+
+A Reforma Tributária promove uma mudança completa no sistema de impostos do Brasil.
+
+**Cronograma:**
+- 2026: Período de testes (1% = 0,1% IBS + 0,9% CBS)
+- 2027: CBS integral (10%)
+- 2029-2033: Transição gradual do IBS
+- 2033: Sistema completo, ICMS e ISS extintos
+
+**Principais mudanças:**
+- IBS substitui ICMS + ISS (17%)
+- CBS substitui PIS + COFINS (10%)
+- Total: ~27% (IVA Dual)
+
+**Características:**
+- Tributos calculados "por fora"
+- Não-cumulatividade plena
+- Cobrança no destino
+
+Para mais informações, entre em contato: WhatsApp (34) 99862-3164""",
+                    keywords=["reforma tributária", "reforma", "mudança", "sistema tributário", "impostos"],
+                    category="reforma",
+                    source="manual"
+                )
+            ]
+            for knowledge in default_knowledge:
+                db.add(knowledge)
+            await db.commit()
+            print("[Server] Base de conhecimento inicial do chatbot criada")
+
+    # Initialize calculator config
+    async with AsyncSession(bind=app.state.engine) as db:
+        result = await db.execute(select(CalculatorConfig))
+        if not result.scalars().first():
+            default_calculators = [
+                CalculatorConfig(calculator_id="calculadora-automatica", name="Calculadora Tributária Automática", active=True, order=1),
+                CalculatorConfig(calculator_id="ibs-cbs", name="Calculadora IBS/CBS Detalhada", active=True, order=2),
+                CalculatorConfig(calculator_id="split", name="Simulador Split Payment", active=True, order=3),
+                CalculatorConfig(calculator_id="timeline", name="Linha do Tempo da Reforma", active=True, order=4),
+                CalculatorConfig(calculator_id="iss", name="Calculadora de ISS", active=True, order=5),
+                CalculatorConfig(calculator_id="regime", name="Simulador de Regime Tributário", active=True, order=6),
+                CalculatorConfig(calculator_id="darf", name="Gerador de DARF", active=True, order=7),
+                CalculatorConfig(calculator_id="difal", name="Calculadora de DIFAL", active=True, order=8),
+                CalculatorConfig(calculator_id="agenda", name="Agenda Tributária", active=True, order=9),
+            ]
+            for calc in default_calculators:
+                db.add(calc)
+            await db.commit()
+            print("[Server] Configuração de calculadoras inicializada")
+
+    # Initialize calculator parameters
+    async with AsyncSession(bind=app.state.engine) as db:
+        result = await db.execute(select(CalculatorParameters))
+        if not result.scalars().first():
+            default_parameters = [
+                CalculatorParameters(key="ibs_estadual", value="9", description="Alíquota IBS Estadual (%)"),
+                CalculatorParameters(key="ibs_municipal", value="8", description="Alíquota IBS Municipal (%)"),
+                CalculatorParameters(key="cbs", value="10", description="Alíquota CBS Federal (%)"),
+            ]
+            for param in default_parameters:
+                db.add(param)
+            await db.commit()
+            print("[Server] Parâmetros de calculadoras inicializados")
+
+# Store engine references for startup
 app.state.engine = engine
+app.state.chat_engine = chat_engine
 
 # ========== AUTH ENDPOINTS ==========
 
@@ -697,6 +970,572 @@ async def delete_weekly_highlight(
     await db.delete(highlight)
     await db.commit()
     return {"message": "Destaque deletado com sucesso"}
+
+# ========== CHATBOT ENDPOINTS ==========
+
+async def search_knowledge(db: AsyncSession, query: str):
+    """Busca no banco de conhecimento por palavras-chave"""
+    query_lower = query.lower()
+    query_words = set(query_lower.split())
+
+    # Remove palavras comuns
+    stopwords = {"o", "a", "os", "as", "um", "uma", "de", "da", "do", "que", "e", "é", "para", "com", "em", "como", "qual", "quais", "oque", "oq"}
+    query_words = query_words - stopwords
+
+    result = await db.execute(
+        select(ChatKnowledge).where(ChatKnowledge.active == True)
+    )
+    knowledge_items = result.scalars().all()
+
+    best_match = None
+    best_score = 0
+
+    for item in knowledge_items:
+        # Verificar palavras-chave
+        keywords = set(k.lower() for k in (item.keywords or []))
+        question_words = set(item.question.lower().split()) - stopwords
+        all_keywords = keywords | question_words
+
+        # Calcular score
+        matches = query_words & all_keywords
+        if len(query_words) > 0:
+            score = len(matches) / len(query_words)
+        else:
+            score = 0
+
+        # Bonus para match exato em keyword
+        for keyword in keywords:
+            if keyword in query_lower:
+                score += 0.3
+
+        if score > best_score and score >= 0.4:
+            best_score = score
+            best_match = item
+
+    return best_match
+
+@app.post("/api/chatbot/ask", response_model=ChatResponse)
+async def chatbot_ask(request: ChatRequest, db: AsyncSession = Depends(get_chat_db)):
+    """Endpoint público do chatbot - busca apenas no banco de dados"""
+    # Buscar configurações
+    result = await db.execute(select(ChatSettings).where(ChatSettings.active == True))
+    settings = result.scalar_one_or_none()
+
+    if not settings:
+        settings = ChatSettings(
+            welcome_message="Olá!",
+            fallback_message="Não encontrei uma resposta.",
+            whatsapp_number="5534998623164",
+            active=True
+        )
+
+    # Buscar no banco de conhecimento
+    knowledge = await search_knowledge(db, request.message)
+
+    if knowledge:
+        return ChatResponse(
+            response=knowledge.answer,
+            found=True,
+            redirect_whatsapp=False,
+            whatsapp_number=None
+        )
+
+    # Não encontrou - registrar pergunta
+    unanswered = UnansweredQuestion(
+        question=request.message,
+        redirected_whatsapp=True
+    )
+    db.add(unanswered)
+    await db.commit()
+
+    return ChatResponse(
+        response=settings.fallback_message,
+        found=False,
+        redirect_whatsapp=True,
+        whatsapp_number=settings.whatsapp_number
+    )
+
+@app.get("/api/chatbot/knowledge", response_model=List[ChatKnowledgeResponse])
+async def get_chat_knowledge(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_chat_db)
+):
+    """Lista toda a base de conhecimento"""
+    result = await db.execute(select(ChatKnowledge).order_by(ChatKnowledge.created_at.desc()))
+    knowledge = result.scalars().all()
+    return knowledge
+
+@app.post("/api/chatbot/knowledge", response_model=ChatKnowledgeResponse)
+async def create_chat_knowledge(
+    knowledge_data: ChatKnowledgeCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_chat_db)
+):
+    """Criar novo conhecimento"""
+    knowledge = ChatKnowledge(**knowledge_data.model_dump())
+    db.add(knowledge)
+    await db.commit()
+    await db.refresh(knowledge)
+    return knowledge
+
+@app.put("/api/chatbot/knowledge/{knowledge_id}", response_model=ChatKnowledgeResponse)
+async def update_chat_knowledge(
+    knowledge_id: int,
+    knowledge_data: ChatKnowledgeUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_chat_db)
+):
+    """Atualizar conhecimento existente"""
+    result = await db.execute(select(ChatKnowledge).where(ChatKnowledge.id == knowledge_id))
+    knowledge = result.scalar_one_or_none()
+    if not knowledge:
+        raise HTTPException(status_code=404, detail="Conhecimento não encontrado")
+
+    for key, value in knowledge_data.model_dump(exclude_unset=True).items():
+        setattr(knowledge, key, value)
+
+    await db.commit()
+    await db.refresh(knowledge)
+    return knowledge
+
+@app.delete("/api/chatbot/knowledge/{knowledge_id}")
+async def delete_chat_knowledge(
+    knowledge_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_chat_db)
+):
+    """Deletar conhecimento"""
+    result = await db.execute(select(ChatKnowledge).where(ChatKnowledge.id == knowledge_id))
+    knowledge = result.scalar_one_or_none()
+    if not knowledge:
+        raise HTTPException(status_code=404, detail="Conhecimento não encontrado")
+
+    await db.delete(knowledge)
+    await db.commit()
+    return {"message": "Conhecimento deletado com sucesso"}
+
+@app.get("/api/chatbot/unanswered", response_model=List[UnansweredQuestionResponse])
+async def get_unanswered_questions(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_chat_db)
+):
+    """Lista perguntas não respondidas"""
+    result = await db.execute(
+        select(UnansweredQuestion)
+        .where(UnansweredQuestion.resolved == False)
+        .order_by(UnansweredQuestion.created_at.desc())
+    )
+    questions = result.scalars().all()
+    return questions
+
+@app.delete("/api/chatbot/unanswered/{question_id}")
+async def delete_unanswered_question(
+    question_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_chat_db)
+):
+    """Deletar pergunta não respondida"""
+    result = await db.execute(select(UnansweredQuestion).where(UnansweredQuestion.id == question_id))
+    question = result.scalar_one_or_none()
+    if not question:
+        raise HTTPException(status_code=404, detail="Pergunta não encontrada")
+
+    await db.delete(question)
+    await db.commit()
+    return {"message": "Pergunta deletada com sucesso"}
+
+@app.post("/api/chatbot/unanswered/{question_id}/resolve")
+async def resolve_unanswered_question(
+    question_id: int,
+    knowledge_id: Optional[int] = None,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_chat_db)
+):
+    """Marcar pergunta como resolvida"""
+    result = await db.execute(select(UnansweredQuestion).where(UnansweredQuestion.id == question_id))
+    question = result.scalar_one_or_none()
+    if not question:
+        raise HTTPException(status_code=404, detail="Pergunta não encontrada")
+
+    question.resolved = True
+    question.resolved_knowledge_id = knowledge_id
+    await db.commit()
+    return {"message": "Pergunta marcada como resolvida"}
+
+@app.get("/api/chatbot/settings", response_model=ChatSettingsResponse)
+async def get_chat_settings(db: AsyncSession = Depends(get_chat_db)):
+    """Obter configurações do chatbot"""
+    result = await db.execute(select(ChatSettings).where(ChatSettings.active == True))
+    settings = result.scalar_one_or_none()
+    if not settings:
+        raise HTTPException(status_code=404, detail="Configurações não encontradas")
+    return settings
+
+@app.put("/api/chatbot/settings", response_model=ChatSettingsResponse)
+async def update_chat_settings(
+    settings_data: ChatSettingsUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_chat_db)
+):
+    """Atualizar configurações do chatbot"""
+    result = await db.execute(select(ChatSettings).where(ChatSettings.active == True))
+    settings = result.scalar_one_or_none()
+
+    if not settings:
+        # Criar se não existir
+        settings = ChatSettings(
+            welcome_message=settings_data.welcome_message or "Olá!",
+            fallback_message=settings_data.fallback_message or "Não encontrei uma resposta.",
+            whatsapp_number=settings_data.whatsapp_number or "5534998623164",
+            active=True
+        )
+        db.add(settings)
+    else:
+        for key, value in settings_data.model_dump(exclude_unset=True).items():
+            setattr(settings, key, value)
+
+    await db.commit()
+    await db.refresh(settings)
+    return settings
+
+@app.post("/api/chatbot/train", response_model=ChatTrainResponse)
+async def chatbot_train(
+    request: ChatTrainRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_chat_db)
+):
+    """Chat de treinamento - usa Gemini para responder (admin only)"""
+    import google.generativeai as genai
+
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="GEMINI_API_KEY não configurada")
+
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel("gemini-pro")
+
+    prompt = f"""Você é um assistente especializado em tributação brasileira e Reforma Tributária.
+Responda de forma clara, didática e em português brasileiro.
+Se a pergunta for sobre IBS, CBS, GTIN, Split Payment, Imposto Seletivo ou qualquer tema tributário brasileiro, forneça uma resposta completa e detalhada.
+
+Pergunta: {request.message}"""
+
+    try:
+        response = model.generate_content(prompt)
+        return ChatTrainResponse(response=response.text)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao consultar IA: {str(e)}")
+
+@app.post("/api/chatbot/search-google", response_model=ChatSearchGoogleResponse)
+async def chatbot_search_google(
+    request: ChatSearchGoogleRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_chat_db)
+):
+    """Pesquisar no Google via Gemini (admin only)"""
+    import google.generativeai as genai
+
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="GEMINI_API_KEY não configurada")
+
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel("gemini-pro")
+
+    prompt = f"""Pesquise e forneça informações atualizadas sobre a seguinte pergunta relacionada à tributação brasileira:
+
+"{request.query}"
+
+Forneça uma resposta completa, precisa e bem estruturada em português brasileiro.
+Inclua detalhes técnicos, legislação aplicável, prazos e qualquer informação relevante.
+Use formatação markdown para melhor legibilidade."""
+
+    try:
+        response = model.generate_content(prompt)
+        return ChatSearchGoogleResponse(response=response.text, source="google")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao pesquisar: {str(e)}")
+
+# ========== CALCULATOR CONFIG ENDPOINTS ==========
+
+@app.get("/api/calculator-config", response_model=List[CalculatorConfigResponse])
+async def get_calculator_config(db: AsyncSession = Depends(get_db)):
+    """Lista todas as calculadoras e seu status"""
+    result = await db.execute(select(CalculatorConfig).order_by(CalculatorConfig.order))
+    calculators = result.scalars().all()
+    return calculators
+
+@app.put("/api/calculator-config/{calculator_id}", response_model=CalculatorConfigResponse)
+async def update_calculator_config(
+    calculator_id: str,
+    config_data: CalculatorConfigUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Atualiza status de uma calculadora"""
+    result = await db.execute(select(CalculatorConfig).where(CalculatorConfig.calculator_id == calculator_id))
+    config = result.scalar_one_or_none()
+    if not config:
+        raise HTTPException(status_code=404, detail="Calculadora não encontrada")
+
+    for key, value in config_data.model_dump(exclude_unset=True).items():
+        setattr(config, key, value)
+
+    await db.commit()
+    await db.refresh(config)
+    return config
+
+# ========== CALCULATOR PARAMETERS ENDPOINTS ==========
+
+@app.get("/api/calculator-parameters")
+async def get_calculator_parameters(db: AsyncSession = Depends(get_db)):
+    """Lista todos os parâmetros das calculadoras"""
+    result = await db.execute(select(CalculatorParameters))
+    parameters = result.scalars().all()
+
+    # Converter para dict para facilitar uso no frontend
+    params_dict = {}
+    for param in parameters:
+        params_dict[param.key] = {
+            "id": param.id,
+            "value": param.value,
+            "description": param.description,
+            "updated_at": param.updated_at.isoformat() if param.updated_at else None
+        }
+
+    return params_dict
+
+@app.put("/api/calculator-parameters")
+async def update_calculator_parameters(
+    params_data: CalculatorParametersBulkUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Atualiza parâmetros das calculadoras em bulk"""
+    updates = params_data.model_dump(exclude_unset=True)
+
+    for key, value in updates.items():
+        if value is not None:
+            result = await db.execute(select(CalculatorParameters).where(CalculatorParameters.key == key))
+            param = result.scalar_one_or_none()
+            if param:
+                param.value = value
+            else:
+                new_param = CalculatorParameters(key=key, value=value, description=f"Alíquota {key.replace('_', ' ').title()}")
+                db.add(new_param)
+
+    await db.commit()
+    return {"message": "Parâmetros atualizados com sucesso"}
+
+# ========== DOCUMENT (BIBLIOTECA) ENDPOINTS ==========
+
+@app.get("/api/documents", response_model=List[DocumentResponse])
+async def get_documents(db: AsyncSession = Depends(get_db)):
+    """Lista todos os documentos ativos da biblioteca"""
+    result = await db.execute(
+        select(Document).where(Document.active == True).order_by(Document.order)
+    )
+    documents = result.scalars().all()
+    return documents
+
+@app.get("/api/documents/all", response_model=List[DocumentResponse])
+async def get_all_documents(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Lista todos os documentos (admin)"""
+    result = await db.execute(select(Document).order_by(Document.order))
+    documents = result.scalars().all()
+    return documents
+
+@app.post("/api/documents", response_model=DocumentResponse)
+async def create_document(
+    doc_data: DocumentCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Criar novo documento"""
+    document = Document(**doc_data.model_dump())
+    db.add(document)
+    await db.commit()
+    await db.refresh(document)
+    return document
+
+@app.put("/api/documents/{doc_id}", response_model=DocumentResponse)
+async def update_document(
+    doc_id: int,
+    doc_data: DocumentUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Atualizar documento"""
+    result = await db.execute(select(Document).where(Document.id == doc_id))
+    document = result.scalar_one_or_none()
+    if not document:
+        raise HTTPException(status_code=404, detail="Documento não encontrado")
+
+    for key, value in doc_data.model_dump(exclude_unset=True).items():
+        setattr(document, key, value)
+
+    await db.commit()
+    await db.refresh(document)
+    return document
+
+@app.delete("/api/documents/{doc_id}")
+async def delete_document(
+    doc_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Deletar documento"""
+    result = await db.execute(select(Document).where(Document.id == doc_id))
+    document = result.scalar_one_or_none()
+    if not document:
+        raise HTTPException(status_code=404, detail="Documento não encontrado")
+
+    await db.delete(document)
+    await db.commit()
+    return {"message": "Documento deletado com sucesso"}
+
+# ========== FAQ ENDPOINTS ==========
+
+@app.get("/api/faqs", response_model=List[FAQResponse])
+async def get_faqs(db: AsyncSession = Depends(get_db)):
+    """Lista todas as FAQs ativas"""
+    result = await db.execute(
+        select(FAQ).where(FAQ.active == True).order_by(FAQ.category, FAQ.order)
+    )
+    faqs = result.scalars().all()
+    return faqs
+
+@app.get("/api/faqs/all", response_model=List[FAQResponse])
+async def get_all_faqs(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Lista todas as FAQs (admin)"""
+    result = await db.execute(select(FAQ).order_by(FAQ.category, FAQ.order))
+    faqs = result.scalars().all()
+    return faqs
+
+@app.post("/api/faqs", response_model=FAQResponse)
+async def create_faq(
+    faq_data: FAQCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Criar nova FAQ"""
+    faq = FAQ(**faq_data.model_dump())
+    db.add(faq)
+    await db.commit()
+    await db.refresh(faq)
+    return faq
+
+@app.put("/api/faqs/{faq_id}", response_model=FAQResponse)
+async def update_faq(
+    faq_id: int,
+    faq_data: FAQUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Atualizar FAQ"""
+    result = await db.execute(select(FAQ).where(FAQ.id == faq_id))
+    faq = result.scalar_one_or_none()
+    if not faq:
+        raise HTTPException(status_code=404, detail="FAQ não encontrada")
+
+    for key, value in faq_data.model_dump(exclude_unset=True).items():
+        setattr(faq, key, value)
+
+    await db.commit()
+    await db.refresh(faq)
+    return faq
+
+@app.delete("/api/faqs/{faq_id}")
+async def delete_faq(
+    faq_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Deletar FAQ"""
+    result = await db.execute(select(FAQ).where(FAQ.id == faq_id))
+    faq = result.scalar_one_or_none()
+    if not faq:
+        raise HTTPException(status_code=404, detail="FAQ não encontrada")
+
+    await db.delete(faq)
+    await db.commit()
+    return {"message": "FAQ deletada com sucesso"}
+
+# ========== GLOSSARY ENDPOINTS ==========
+
+@app.get("/api/glossary", response_model=List[GlossaryTermResponse])
+async def get_glossary(db: AsyncSession = Depends(get_db)):
+    """Lista todos os termos ativos do glossário"""
+    result = await db.execute(
+        select(GlossaryTerm).where(GlossaryTerm.active == True).order_by(GlossaryTerm.letter, GlossaryTerm.order)
+    )
+    terms = result.scalars().all()
+    return terms
+
+@app.get("/api/glossary/all", response_model=List[GlossaryTermResponse])
+async def get_all_glossary(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Lista todos os termos do glossário (admin)"""
+    result = await db.execute(select(GlossaryTerm).order_by(GlossaryTerm.letter, GlossaryTerm.order))
+    terms = result.scalars().all()
+    return terms
+
+@app.post("/api/glossary", response_model=GlossaryTermResponse)
+async def create_glossary_term(
+    term_data: GlossaryTermCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Criar novo termo no glossário"""
+    term = GlossaryTerm(**term_data.model_dump())
+    db.add(term)
+    await db.commit()
+    await db.refresh(term)
+    return term
+
+@app.put("/api/glossary/{term_id}", response_model=GlossaryTermResponse)
+async def update_glossary_term(
+    term_id: int,
+    term_data: GlossaryTermUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Atualizar termo do glossário"""
+    result = await db.execute(select(GlossaryTerm).where(GlossaryTerm.id == term_id))
+    term = result.scalar_one_or_none()
+    if not term:
+        raise HTTPException(status_code=404, detail="Termo não encontrado")
+
+    for key, value in term_data.model_dump(exclude_unset=True).items():
+        setattr(term, key, value)
+
+    await db.commit()
+    await db.refresh(term)
+    return term
+
+@app.delete("/api/glossary/{term_id}")
+async def delete_glossary_term(
+    term_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Deletar termo do glossário"""
+    result = await db.execute(select(GlossaryTerm).where(GlossaryTerm.id == term_id))
+    term = result.scalar_one_or_none()
+    if not term:
+        raise HTTPException(status_code=404, detail="Termo não encontrado")
+
+    await db.delete(term)
+    await db.commit()
+    return {"message": "Termo deletado com sucesso"}
 
 @app.get("/")
 async def root():

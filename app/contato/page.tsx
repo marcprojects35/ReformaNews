@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Header } from "@/components/layout/header"
 import { Footer } from "@/components/layout/footer"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -20,6 +20,8 @@ import {
 
 export default function ContatoPage() {
   const [enviado, setEnviado] = useState(false)
+  const [whatsappNumber, setWhatsappNumber] = useState("")
+  const [whatsappDisplay, setWhatsappDisplay] = useState("")
   const [formData, setFormData] = useState({
     nome: "",
     email: "",
@@ -27,6 +29,32 @@ export default function ContatoPage() {
     assunto: "",
     mensagem: ""
   })
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const response = await fetch("http://localhost:8001/api/settings")
+        if (response.ok) {
+          const data = await response.json()
+          const settingsMap: Record<string, string> = {}
+          data.forEach((setting: { key: string; value: string }) => {
+            settingsMap[setting.key] = setting.value
+          })
+          const number = settingsMap.whatsapp_number || ""
+          setWhatsappNumber(number)
+          if (number.length >= 12) {
+            const ddd = number.slice(2, 4)
+            const part1 = number.slice(4, 9)
+            const part2 = number.slice(9)
+            setWhatsappDisplay(`(${ddd}) ${part1}-${part2}`)
+          }
+        }
+      } catch {
+        console.error("Erro ao carregar configurações do contato")
+      }
+    }
+    loadSettings()
+  }, [])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -158,17 +186,24 @@ export default function ContatoPage() {
                 <p className="text-white/90 mb-4">
                   Atendimento rápido e personalizado pelo WhatsApp
                 </p>
-                <a
-                  href="https://wa.me/5534998623164"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block"
-                >
-                  <Button className="w-full bg-white text-[#FF7A00] hover:bg-gray-100">
+                {whatsappNumber ? (
+                  <a
+                    href={`https://wa.me/${whatsappNumber}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block"
+                  >
+                    <Button className="w-full bg-white text-[#FF7A00] hover:bg-gray-100">
+                      <MessageCircle className="h-4 w-4 mr-2" />
+                      {whatsappDisplay}
+                    </Button>
+                  </a>
+                ) : (
+                  <Button className="w-full bg-white/50 text-[#FF7A00] cursor-default" disabled>
                     <MessageCircle className="h-4 w-4 mr-2" />
-                    (34) 99862-3164
+                    Carregando...
                   </Button>
-                </a>
+                )}
               </CardContent>
             </Card>
 

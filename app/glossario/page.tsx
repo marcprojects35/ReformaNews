@@ -1,134 +1,71 @@
+"use client"
+
+import { useState, useEffect, useMemo } from "react"
 import { Header } from "@/components/layout/header"
 import { Footer } from "@/components/layout/footer"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { BookOpen, Search } from "lucide-react"
+import { BookOpen, Search, Loader2 } from "lucide-react"
 
-const glossaryTerms = [
-  {
-    letter: "C",
-    terms: [
-      {
-        term: "CBS - Contribuição sobre Bens e Serviços",
-        definition:
-          "Tributo federal que substituirá o PIS e a Cofins no novo sistema tributário. Será administrado pela Receita Federal e terá características de IVA não-cumulativo.",
-      },
-      {
-        term: "cClassTrib",
-        definition:
-          "Novo código nacional de classificação tributária que substituirá o CST (Código de Situação Tributária) nos documentos fiscais eletrônicos a partir de 2026.",
-      },
-      {
-        term: "Crédito Tributário",
-        definition:
-          "Direito do contribuinte de abater o imposto pago nas compras do imposto devido nas vendas, característica fundamental do sistema não-cumulativo.",
-      },
-    ],
-  },
-  {
-    letter: "D",
-    terms: [
-      {
-        term: "DERE",
-        definition:
-          "Declaração de Registro Eletrônico, obrigação acessória excepcional aplicável apenas a serviços financeiros, planos de saúde e concursos de prognósticos no novo sistema.",
-      },
-    ],
-  },
-  {
-    letter: "G",
-    terms: [
-      {
-        term: "GTIN - Global Trade Item Number",
-        definition:
-          "Código de identificação única de produtos reconhecido internacionalmente. Será obrigatório nas NF-e e NFC-e a partir de outubro de 2025 para controle fiscal.",
-      },
-    ],
-  },
-  {
-    letter: "I",
-    terms: [
-      {
-        term: "IBS - Imposto sobre Bens e Serviços",
-        definition:
-          "Tributo estadual e municipal que substituirá o ICMS e o ISS. Será administrado pelo Comitê Gestor do IBS e seguirá o princípio do destino.",
-      },
-      {
-        term: "Imposto Seletivo (IS)",
-        definition:
-          "Novo tributo federal que incidirá sobre bens e serviços prejudiciais à saúde ou ao meio ambiente, como bebidas alcoólicas, cigarros e veículos poluentes.",
-      },
-      {
-        term: "IVA - Imposto sobre Valor Agregado",
-        definition:
-          "Modelo de tributação que incide sobre o valor adicionado em cada etapa da cadeia produtiva. O Brasil adotará um IVA Dual com IBS e CBS.",
-      },
-      {
-        term: "IVA Dual",
-        definition:
-          "Sistema com dois impostos sobre valor agregado: um federal (CBS) e outro subnacional (IBS), modelo adotado pelo Brasil na Reforma Tributária.",
-      },
-    ],
-  },
-  {
-    letter: "N",
-    terms: [
-      {
-        term: "NCM - Nomenclatura Comum do Mercosul",
-        definition:
-          "Código de oito dígitos que classifica mercadorias. Continuará existindo, mas o GTIN ganhará mais relevância para identificação específica de produtos.",
-      },
-      {
-        term: "Não-cumulatividade",
-        definition:
-          "Princípio que permite deduzir o imposto pago nas etapas anteriores, evitando tributação em cascata e garantindo que o imposto incida apenas sobre o valor agregado.",
-      },
-    ],
-  },
-  {
-    letter: "P",
-    terms: [
-      {
-        term: "PMPF - Preço Médio Ponderado ao Consumidor Final",
-        definition:
-          "Base de cálculo utilizada em alguns regimes de substituição tributária, especialmente para combustíveis e bebidas.",
-      },
-      {
-        term: "Princípio do Destino",
-        definition:
-          "Regra pela qual o imposto é arrecadado no estado/município de destino da mercadoria, não na origem. Base do novo sistema IBS.",
-      },
-    ],
-  },
-  {
-    letter: "S",
-    terms: [
-      {
-        term: "Split Payment",
-        definition:
-          "Sistema de pagamento onde o banco separa automaticamente o valor do tributo e repassa diretamente ao Fisco, sem passar pelo caixa do vendedor.",
-      },
-      {
-        term: "Substituição Tributária (ST)",
-        definition:
-          "Regime onde a responsabilidade pelo recolhimento do imposto de toda a cadeia é atribuída a um contribuinte específico. Será extinto com a reforma.",
-      },
-    ],
-  },
-  {
-    letter: "T",
-    terms: [
-      {
-        term: "Transição Tributária",
-        definition:
-          "Período de 2026 a 2033 durante o qual os impostos antigos serão gradualmente substituídos pelos novos tributos IBS e CBS.",
-      },
-    ],
-  },
-]
+interface GlossaryItem {
+  id: number
+  letter: string
+  term: string
+  definition: string
+  active: boolean
+  order: number
+}
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001"
 
 export default function GlossarioPage() {
+  const [glossary, setGlossary] = useState<GlossaryItem[]>([])
+  const [busca, setBusca] = useState("")
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchGlossary() {
+      try {
+        const response = await fetch(`${API_URL}/api/glossary`)
+        if (response.ok) {
+          const data = await response.json()
+          setGlossary(data)
+        }
+      } catch (error) {
+        console.error("Erro ao carregar glossário:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchGlossary()
+  }, [])
+
+  // Agrupar termos por letra
+  const glossarySections = useMemo(() => {
+    const filtered = busca
+      ? glossary.filter(g =>
+          g.term.toLowerCase().includes(busca.toLowerCase()) ||
+          g.definition.toLowerCase().includes(busca.toLowerCase())
+        )
+      : glossary
+
+    const grouped: Record<string, GlossaryItem[]> = {}
+    filtered.forEach(item => {
+      if (!grouped[item.letter]) {
+        grouped[item.letter] = []
+      }
+      grouped[item.letter].push(item)
+    })
+
+    return Object.entries(grouped)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([letter, terms]) => ({
+        letter,
+        terms
+      }))
+  }, [glossary, busca])
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-blue-50/30 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 transition-colors">
       <Header />
@@ -150,44 +87,59 @@ export default function GlossarioPage() {
             <Search className="h-5 w-5 text-gray-400" />
             <Input
               placeholder="Busque um termo..."
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
               className="border-0 bg-transparent text-sm focus-visible:ring-0 p-0 h-auto dark:text-gray-200"
             />
           </div>
         </div>
 
-        <div className="space-y-8">
-          {glossaryTerms.map((section, index) => (
-            <Card
-              key={section.letter}
-              className="border-2 border-gray-200 dark:border-gray-700 dark:bg-gray-800 shadow-lg hover:shadow-xl transition-all animate-fade-in-up"
-              style={{ animationDelay: `${index * 50}ms` }}
-            >
-              <CardContent className="p-8">
-                <div className="flex items-center gap-4 mb-6 pb-4 border-b-2 border-gray-200 dark:border-gray-700">
-                  <div className="w-16 h-16 bg-gradient-to-br from-[#FF7A00] to-[#FF9500] rounded-xl flex items-center justify-center shadow-lg">
-                    <span className="text-3xl font-bold text-white">{section.letter}</span>
-                  </div>
-                  <Badge className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 px-4 py-2">
-                    {section.terms.length} {section.terms.length === 1 ? "termo" : "termos"}
-                  </Badge>
-                </div>
-
-                <div className="space-y-6">
-                  {section.terms.map((item, termIndex) => (
-                    <div key={termIndex} className="group">
-                      <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-2 group-hover:text-[#FF7A00] transition-colors">
-                        {item.term}
-                      </h3>
-                      <p className="text-gray-700 dark:text-gray-300 leading-relaxed pl-4 border-l-4 border-[#0046B3]/20 group-hover:border-[#FF7A00] transition-colors">
-                        {item.definition}
-                      </p>
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-[#0046B3]" />
+          </div>
+        ) : (
+          <div className="space-y-8">
+            {glossarySections.map((section, index) => (
+              <Card
+                key={section.letter}
+                className="border-2 border-gray-200 dark:border-gray-700 dark:bg-gray-800 shadow-lg hover:shadow-xl transition-all animate-fade-in-up"
+                style={{ animationDelay: `${index * 50}ms` }}
+              >
+                <CardContent className="p-8">
+                  <div className="flex items-center gap-4 mb-6 pb-4 border-b-2 border-gray-200 dark:border-gray-700">
+                    <div className="w-16 h-16 bg-gradient-to-br from-[#FF7A00] to-[#FF9500] rounded-xl flex items-center justify-center shadow-lg">
+                      <span className="text-3xl font-bold text-white">{section.letter}</span>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                    <Badge className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 px-4 py-2">
+                      {section.terms.length} {section.terms.length === 1 ? "termo" : "termos"}
+                    </Badge>
+                  </div>
+
+                  <div className="space-y-6">
+                    {section.terms.map((item) => (
+                      <div key={item.id} className="group">
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-2 group-hover:text-[#FF7A00] transition-colors">
+                          {item.term}
+                        </h3>
+                        <p className="text-gray-700 dark:text-gray-300 leading-relaxed pl-4 border-l-4 border-[#0046B3]/20 group-hover:border-[#FF7A00] transition-colors">
+                          {item.definition}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {!loading && glossarySections.length === 0 && (
+          <div className="text-center py-12">
+            <BookOpen className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-600 dark:text-gray-400 text-lg">Nenhum termo encontrado</p>
+          </div>
+        )}
 
         <div className="mt-12 bg-gradient-to-r from-[#FF7A00] to-[#FF9500] text-white p-8 rounded-2xl shadow-xl">
           <h3 className="text-2xl font-bold mb-4">Quer mais informações?</h3>

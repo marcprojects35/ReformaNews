@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Header } from "@/components/layout/header"
 import { Footer } from "@/components/layout/footer"
 import { IbsCbsCalculator } from "@/components/calculators/ibs-cbs-calculator"
@@ -13,13 +13,27 @@ import { DifalCalculator } from "@/components/calculators/difal-calculator"
 import { AgendaTributaria } from "@/components/calculators/agenda-tributaria"
 import { CalculadoraTributariaAutomatica } from "@/components/calculators/calculadora-tributaria-automatica"
 import { Button } from "@/components/ui/button"
-import { 
-  Wrench, 
-  Calculator, 
-  FileText, 
-  Calendar, 
-  TrendingUp
+import {
+  Wrench,
+  Calculator,
+  FileText,
+  Calendar,
+  TrendingUp,
+  Loader2
 } from "lucide-react"
+
+interface CalculatorConfig {
+  calculator_id: string
+  name: string
+  active: boolean
+  order: number
+}
+
+interface TaxParameters {
+  ibs_estadual: { value: string }
+  ibs_municipal: { value: string }
+  cbs: { value: string }
+}
 
 const categorias = [
   { id: "todas", nome: "Todas", icon: Wrench },
@@ -43,10 +57,49 @@ const ferramentas = [
 
 export default function FerramentasPage() {
   const [categoriaAtiva, setCategoriaAtiva] = useState("todas")
+  const [calculatorConfig, setCalculatorConfig] = useState<CalculatorConfig[]>([])
+  const [taxParameters, setTaxParameters] = useState<TaxParameters | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  const ferramentasFiltradas = categoriaAtiva === "todas" 
-    ? ferramentas 
-    : ferramentas.filter(f => f.categoria === categoriaAtiva)
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const response = await fetch("/api/calculator-config")
+        const data = await response.json()
+        setCalculatorConfig(data.calculators || [])
+        setTaxParameters(data.parameters || null)
+      } catch (error) {
+        console.error("Erro ao carregar configuração:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadConfig()
+  }, [])
+
+  // Filtrar calculadoras baseado no status ativo (só mostra se existir no backend e estiver ativa)
+  const ferramentasAtivas = ferramentas.filter(f => {
+    const config = calculatorConfig.find(c => c.calculator_id === f.id)
+    return config ? config.active : false
+  })
+
+  const ferramentasFiltradas = categoriaAtiva === "todas"
+    ? ferramentasAtivas
+    : ferramentasAtivas.filter(f => f.categoria === categoriaAtiva)
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#1a1a1a] via-[#2D3748] to-[#1a1a1a]">
+        <Header />
+        <main className="max-w-[1400px] mx-auto px-4 py-12">
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="h-8 w-8 text-[#FFD700] animate-spin" />
+          </div>
+        </main>
+        <Footer />
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#1a1a1a] via-[#2D3748] to-[#1a1a1a]">
@@ -92,6 +145,10 @@ export default function FerramentasPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {ferramentasFiltradas.map(ferramenta => {
             const Component = ferramenta.component
+            // Passar parâmetros de alíquotas para calculadoras que precisam
+            if (ferramenta.id === "ibs-cbs" || ferramenta.id === "calculadora-automatica") {
+              return <Component key={ferramenta.id} taxParameters={taxParameters} />
+            }
             return <Component key={ferramenta.id} />
           })}
         </div>

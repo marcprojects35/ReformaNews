@@ -1,34 +1,72 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Header } from "@/components/layout/header"
 import { Footer } from "@/components/layout/footer"
-import { noticias, categorias, buscarNoticias, getNoticiasPorCategoria } from "@/lib/noticias-data"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Search, Calendar, ArrowRight, Newspaper, Filter, ChevronLeft, ChevronRight } from "lucide-react"
+import { Search, Calendar, ArrowRight, Newspaper, Filter, ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
 import Link from "next/link"
 
+interface Noticia {
+  id: number
+  title: string
+  excerpt: string
+  content: string
+  category: string
+  badge: string
+  badge_color: string
+  date: string
+  image_url: string | null
+  tags: string[]
+  source: string
+}
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001"
 const ITEMS_PER_PAGE = 6
 
 export default function NoticiasPage() {
+  const [noticias, setNoticias] = useState<Noticia[]>([])
+  const [categorias, setCategorias] = useState<string[]>(["Todas"])
   const [busca, setBusca] = useState("")
   const [categoriaAtiva, setCategoriaAtiva] = useState("Todas")
   const [paginaAtual, setPaginaAtual] = useState(1)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchNoticias() {
+      try {
+        const response = await fetch(`${API_URL}/api/news`)
+        if (response.ok) {
+          const data = await response.json()
+          setNoticias(data)
+
+          // Extrair categorias únicas
+          const uniqueCategories = ["Todas", ...Array.from(new Set(data.map((n: Noticia) => n.category)))] as string[]
+          setCategorias(uniqueCategories)
+        }
+      } catch (error) {
+        console.error("Erro ao carregar notícias:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchNoticias()
+  }, [])
 
   const noticiasFiltradas = useMemo(() => {
-    let resultado = categoriaAtiva === "Todas" ? noticias : getNoticiasPorCategoria(categoriaAtiva)
+    let resultado = categoriaAtiva === "Todas" ? noticias : noticias.filter(n => n.category === categoriaAtiva)
     if (busca.trim()) {
-      resultado = resultado.filter(n => 
-        n.titulo.toLowerCase().includes(busca.toLowerCase()) ||
-        n.resumo.toLowerCase().includes(busca.toLowerCase()) ||
+      resultado = resultado.filter(n =>
+        n.title.toLowerCase().includes(busca.toLowerCase()) ||
+        n.excerpt.toLowerCase().includes(busca.toLowerCase()) ||
         n.tags.some(tag => tag.toLowerCase().includes(busca.toLowerCase()))
       )
     }
     return resultado
-  }, [busca, categoriaAtiva])
+  }, [noticias, busca, categoriaAtiva])
 
   const totalPaginas = Math.ceil(noticiasFiltradas.length / ITEMS_PER_PAGE)
   const noticiasPaginadas = noticiasFiltradas.slice(
@@ -107,50 +145,58 @@ export default function NoticiasPage() {
           </div>
         </div>
 
-        <div className="mb-4 text-sm text-gray-400">
-          Exibindo {noticiasPaginadas.length} de {noticiasFiltradas.length} notícias
-        </div>
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-[#FFD700]" />
+          </div>
+        ) : (
+          <>
+            <div className="mb-4 text-sm text-gray-400">
+              Exibindo {noticiasPaginadas.length} de {noticiasFiltradas.length} notícias
+            </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          {noticiasPaginadas.map(noticia => (
-            <Card key={noticia.id} className="group hover:shadow-2xl transition-all duration-300 bg-gray-800/50 border-gray-700 hover:border-[#FFD700]/50 overflow-hidden">
-              <CardHeader className="pb-3">
-                <div className="flex items-center gap-2 mb-2">
-                  <Badge className={`${getCategoriaColor(noticia.categoria)} text-gray-900 text-xs font-bold shadow-lg`}>
-                    {noticia.categoria}
-                  </Badge>
-                  {noticia.tags.slice(0, 2).map(tag => (
-                    <Badge key={tag} variant="outline" className="text-xs border-gray-600 text-gray-400">
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
-                <CardTitle className="text-lg leading-tight text-white group-hover:text-[#FFD700] transition-colors line-clamp-2">
-                  {noticia.titulo}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-400 text-sm mb-4 line-clamp-3">
-                  {noticia.resumo}
-                </p>
-                <div className="flex items-center justify-between pt-4 border-t border-gray-700">
-                  <div className="flex items-center gap-2 text-xs text-gray-500">
-                    <Calendar className="h-3 w-3 text-[#FFD700]" />
-                    {new Date(noticia.data).toLocaleDateString('pt-BR')}
-                  </div>
-                  <Link href={`/noticia/${noticia.id}`}>
-                    <Button variant="ghost" size="sm" className="text-[#FFD700] hover:bg-[#FFD700] hover:text-gray-900 font-semibold group/btn rounded-full px-4">
-                      Ler mais
-                      <ArrowRight className="h-4 w-4 ml-1 group-hover/btn:translate-x-1 transition-transform" />
-                    </Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+              {noticiasPaginadas.map(noticia => (
+                <Card key={noticia.id} className="group hover:shadow-2xl transition-all duration-300 bg-gray-800/50 border-gray-700 hover:border-[#FFD700]/50 overflow-hidden">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Badge className={`${getCategoriaColor(noticia.category)} text-gray-900 text-xs font-bold shadow-lg`}>
+                        {noticia.badge || noticia.category}
+                      </Badge>
+                      {noticia.tags.slice(0, 2).map(tag => (
+                        <Badge key={tag} variant="outline" className="text-xs border-gray-600 text-gray-400">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                    <CardTitle className="text-lg leading-tight text-white group-hover:text-[#FFD700] transition-colors line-clamp-2">
+                      {noticia.title}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-gray-400 text-sm mb-4 line-clamp-3">
+                      {noticia.excerpt}
+                    </p>
+                    <div className="flex items-center justify-between pt-4 border-t border-gray-700">
+                      <div className="flex items-center gap-2 text-xs text-gray-500">
+                        <Calendar className="h-3 w-3 text-[#FFD700]" />
+                        {new Date(noticia.date).toLocaleDateString('pt-BR')}
+                      </div>
+                      <Link href={`/noticia/${noticia.id}`}>
+                        <Button variant="ghost" size="sm" className="text-[#FFD700] hover:bg-[#FFD700] hover:text-gray-900 font-semibold group/btn rounded-full px-4">
+                          Ler mais
+                          <ArrowRight className="h-4 w-4 ml-1 group-hover/btn:translate-x-1 transition-transform" />
+                        </Button>
+                      </Link>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </>
+        )}
 
-        {noticiasFiltradas.length === 0 && (
+        {!loading && noticiasFiltradas.length === 0 && (
           <div className="text-center py-12">
             <Newspaper className="h-16 w-16 text-gray-600 mx-auto mb-4" />
             <p className="text-gray-400 text-lg">Nenhuma notícia encontrada</p>
@@ -158,7 +204,7 @@ export default function NoticiasPage() {
           </div>
         )}
 
-        {totalPaginas > 1 && (
+        {!loading && totalPaginas > 1 && (
           <div className="flex items-center justify-center gap-2">
             <Button
               variant="outline"

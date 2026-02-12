@@ -76,9 +76,16 @@ export default function AdminNewsletter() {
 
   const loadNewsletters = async () => {
     try {
-      const response = await fetch("http://localhost:8001/api/newsletters")
-      const data = await response.json()
-      setNewsletters(data)
+      const token = localStorage.getItem("admin_token")
+      const response = await fetch("http://localhost:8001/api/newsletters", {
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setNewsletters(data)
+      }
     } catch (error) {
       console.error("Erro ao carregar newsletters:", error)
     } finally {

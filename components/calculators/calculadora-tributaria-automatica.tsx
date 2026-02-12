@@ -9,6 +9,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Search, Calculator, FileText, Package, Download, Loader2 } from "lucide-react"
 import jsPDF from "jspdf"
 
+interface TaxParameters {
+  ibs_estadual: { value: string }
+  ibs_municipal: { value: string }
+  cbs: { value: string }
+}
+
+interface CalculadoraTributariaAutomaticaProps {
+  taxParameters?: TaxParameters | null
+}
+
 interface Produto {
   id: number
   nome: string
@@ -36,7 +46,12 @@ const categorias = [
   "Veículos", "Móveis", "Brinquedos/Jogos", "Outros"
 ]
 
-export function CalculadoraTributariaAutomatica() {
+export function CalculadoraTributariaAutomatica({ taxParameters }: CalculadoraTributariaAutomaticaProps) {
+  // Usar parâmetros do admin ou valores padrão
+  const ibsEstadualPercent = parseFloat(taxParameters?.ibs_estadual?.value || "9")
+  const ibsMunicipalPercent = parseFloat(taxParameters?.ibs_municipal?.value || "8")
+  const cbsPercent = parseFloat(taxParameters?.cbs?.value || "10")
+
   const [busca, setBusca] = useState("")
   const [categoriaFiltro, setCategoriaFiltro] = useState("todas")
   const [produtoSelecionado, setProdutoSelecionado] = useState<Produto | null>(null)
@@ -135,7 +150,7 @@ export function CalculadoraTributariaAutomatica() {
 
   const calcular = () => {
     if (!produtoSelecionado) return
-    
+
     const qtd = parseInt(quantidade) || 1
     const valor = parseFloat(valorUnitario.replace(/[^\d,]/g, "").replace(",", ".")) || 0
     const valorTotal = qtd * valor
@@ -144,9 +159,10 @@ export function CalculadoraTributariaAutomatica() {
     const ipi = valorTotal * (produtoSelecionado.ipi / 100)
     const pis = valorTotal * (produtoSelecionado.pis / 100)
     const cofins = valorTotal * (produtoSelecionado.cofins / 100)
-    const ibsEstadual = valorTotal * (produtoSelecionado.ibsEstadual / 100)
-    const ibsMunicipal = valorTotal * (produtoSelecionado.ibsMunicipal / 100)
-    const cbs = valorTotal * (produtoSelecionado.cbs / 100)
+    // Usar parâmetros configurados pelo admin para a reforma tributária
+    const ibsEstadual = valorTotal * (ibsEstadualPercent / 100)
+    const ibsMunicipal = valorTotal * (ibsMunicipalPercent / 100)
+    const cbs = valorTotal * (cbsPercent / 100)
 
     const totalTributos = icms + ipi + pis + cofins
     const valorLiquido = valorTotal - totalTributos
@@ -235,9 +251,9 @@ export function CalculadoraTributariaAutomatica() {
     y += 8
     doc.setFontSize(10)
     doc.setTextColor(0)
-    doc.text(`IBS Estadual (${produtoSelecionado.ibsEstadual}%): ${formatCurrency(resultado.ibsEstadual)}`, 20, y); y += 6
-    doc.text(`IBS Municipal (${produtoSelecionado.ibsMunicipal}%): ${formatCurrency(resultado.ibsMunicipal)}`, 20, y); y += 6
-    doc.text(`CBS (${produtoSelecionado.cbs}%): ${formatCurrency(resultado.cbs)}`, 20, y); y += 8
+    doc.text(`IBS Estadual (${ibsEstadualPercent}%): ${formatCurrency(resultado.ibsEstadual)}`, 20, y); y += 6
+    doc.text(`IBS Municipal (${ibsMunicipalPercent}%): ${formatCurrency(resultado.ibsMunicipal)}`, 20, y); y += 6
+    doc.text(`CBS (${cbsPercent}%): ${formatCurrency(resultado.cbs)}`, 20, y); y += 8
     doc.setFontSize(11)
     doc.setTextColor(0, 70, 179)
     doc.text(`Total IBS/CBS: ${formatCurrency(resultado.ibsEstadual + resultado.ibsMunicipal + resultado.cbs)}`, 20, y); y += 20
@@ -461,15 +477,15 @@ export function CalculadoraTributariaAutomatica() {
                   <h5 className="font-semibold text-gray-700 dark:text-gray-300 mb-3">Reforma Tributaria (IBS/CBS) - 2026</h5>
                   <div className="space-y-2">
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">IBS Estadual ({produtoSelecionado?.ibsEstadual}%)</span>
+                      <span className="text-gray-600 dark:text-gray-400">IBS Estadual ({ibsEstadualPercent}%)</span>
                       <span className="font-medium">{formatCurrency(resultado.ibsEstadual)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">IBS Municipal ({produtoSelecionado?.ibsMunicipal}%)</span>
+                      <span className="text-gray-600 dark:text-gray-400">IBS Municipal ({ibsMunicipalPercent}%)</span>
                       <span className="font-medium">{formatCurrency(resultado.ibsMunicipal)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">CBS ({produtoSelecionado?.cbs}%)</span>
+                      <span className="text-gray-600 dark:text-gray-400">CBS ({cbsPercent}%)</span>
                       <span className="font-medium">{formatCurrency(resultado.cbs)}</span>
                     </div>
                     <div className="flex justify-between border-t pt-2 mt-2">

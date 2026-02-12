@@ -11,8 +11,8 @@ import Link from "next/link"
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [settings, setSettings] = useState({
-    whatsapp_number: "5534998623164",
-    logo_url: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/logo-LCnFAhRppf1WpoIrMPm80uY0pn1a0U.png",
+    whatsapp_number: "",
+    logo_url: "",
     site_title: "Reforma News"
   })
 
@@ -28,8 +28,8 @@ export function Header() {
             settingsMap[setting.key] = setting.value
           })
           setSettings({
-            whatsapp_number: settingsMap.whatsapp_number || "5534998623164",
-            logo_url: settingsMap.logo_url || "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/logo-LCnFAhRppf1WpoIrMPm80uY0pn1a0U.png",
+            whatsapp_number: settingsMap.whatsapp_number || "",
+            logo_url: settingsMap.logo_url || "",
             site_title: settingsMap.site_title || "Reforma News"
           })
         }

@@ -1,6 +1,39 @@
+"use client"
+
+import { useEffect, useState } from "react"
 import { Mail, Phone, MapPin, Globe, Instagram, Linkedin } from "lucide-react"
 
 export function Footer() {
+  const [whatsappNumber, setWhatsappNumber] = useState("")
+  const [whatsappDisplay, setWhatsappDisplay] = useState("")
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const response = await fetch("http://localhost:8001/api/settings")
+        if (response.ok) {
+          const data = await response.json()
+          const settingsMap: Record<string, string> = {}
+          data.forEach((setting: { key: string; value: string }) => {
+            settingsMap[setting.key] = setting.value
+          })
+          const number = settingsMap.whatsapp_number || ""
+          setWhatsappNumber(number)
+          // Formatar para exibição: 5534998623164 -> (34) 99862-3164
+          if (number.length >= 12) {
+            const ddd = number.slice(2, 4)
+            const part1 = number.slice(4, 9)
+            const part2 = number.slice(9)
+            setWhatsappDisplay(`(${ddd}) ${part1}-${part2}`)
+          }
+        }
+      } catch {
+        console.error("Erro ao carregar configurações do footer")
+      }
+    }
+    loadSettings()
+  }, [])
+
   return (
     <footer className="relative bg-gradient-to-br from-[#1a1a1a] via-[#2D3748] to-[#1a1a1a] text-white mt-24 overflow-hidden">
       <div
@@ -63,15 +96,17 @@ export function Footer() {
                 <Phone className="h-4 w-4" />
                 (34) 3224-0123
               </a>
-              <a
-                href="https://wa.me/5534998623164"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-3 hover:text-[#FFD700] transition-colors cursor-pointer"
-              >
-                <Phone className="h-4 w-4" />
-                (34) 99862-3164
-              </a>
+              {whatsappNumber && (
+                <a
+                  href={`https://wa.me/${whatsappNumber}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-3 hover:text-[#FFD700] transition-colors cursor-pointer"
+                >
+                  <Phone className="h-4 w-4" />
+                  {whatsappDisplay}
+                </a>
+              )}
               <a
                 href="mailto:ReformaNews@ctributaria.com.br"
                 className="flex items-center gap-3 hover:text-[#FFD700] transition-colors cursor-pointer"

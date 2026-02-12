@@ -22,28 +22,6 @@ interface WeeklyHighlight {
   order: number
 }
 
-const defaultFiscalCalendar = [
-  { date: "10", month: "DEZ", event: "Vencimento ICMS", event_type: "estadual" },
-  { date: "15", month: "DEZ", event: "IBS/CBS - Apuração", event_type: "federal" },
-  { date: "20", month: "DEZ", event: "DCTF-Web", event_type: "federal" },
-  { date: "25", month: "DEZ", event: "EFD-Reinf", event_type: "trabalhista" },
-]
-
-const defaultHighlights = [
-  {
-    title: "Empresas do Simples estão dispensadas de recolher IBS/CBS em 2026",
-    category: "Simples Nacional",
-  },
-  {
-    title: "DERE não é a nova obrigação acessória da reforma tributária",
-    category: "Obrigações",
-  },
-  {
-    title: "Transição para o novo modelo: cronograma 2026-2033",
-    category: "Reforma",
-  },
-]
-
 export function Sidebar() {
   const [fiscalCalendar, setFiscalCalendar] = useState<FiscalEvent[]>([])
   const [highlights, setHighlights] = useState<WeeklyHighlight[]>([])
@@ -56,16 +34,10 @@ export function Sidebar() {
         const response = await fetch("http://localhost:8001/api/fiscal-calendar")
         if (response.ok) {
           const data = await response.json()
-          if (data && data.length > 0) {
-            setFiscalCalendar(data)
-          } else {
-            setFiscalCalendar(defaultFiscalCalendar as unknown as FiscalEvent[])
-          }
-        } else {
-          setFiscalCalendar(defaultFiscalCalendar as unknown as FiscalEvent[])
+          setFiscalCalendar(data || [])
         }
       } catch {
-        setFiscalCalendar(defaultFiscalCalendar as unknown as FiscalEvent[])
+        console.error("Erro ao carregar calendário fiscal do backend")
       } finally {
         setLoading(false)
       }
@@ -76,16 +48,10 @@ export function Sidebar() {
         const response = await fetch("http://localhost:8001/api/weekly-highlights")
         if (response.ok) {
           const data = await response.json()
-          if (data && data.length > 0) {
-            setHighlights(data)
-          } else {
-            setHighlights(defaultHighlights as unknown as WeeklyHighlight[])
-          }
-        } else {
-          setHighlights(defaultHighlights as unknown as WeeklyHighlight[])
+          setHighlights(data || [])
         }
       } catch {
-        setHighlights(defaultHighlights as unknown as WeeklyHighlight[])
+        console.error("Erro ao carregar destaques do backend")
       } finally {
         setHighlightsLoading(false)
       }
@@ -99,10 +65,10 @@ export function Sidebar() {
     <div className="space-y-6 sticky top-32">
       {/* Calendário Fiscal */}
       <div className="border border-gray-700 shadow-xl rounded-xl overflow-hidden bg-gray-800">
-        <div className="bg-gradient-to-r from-[#1a1a1a] to-[#2D3748] text-white p-4">
+        <div className="bg-gradient-to-r from-[#FFD700] to-[#FFC107] text-gray-900 p-4">
           <h3 className="text-base flex items-center gap-2 font-bold">
-            <div className="p-1.5 bg-[#FFD700]/20 rounded-lg">
-              <Calendar className="h-4 w-4 text-[#FFD700]" />
+            <div className="p-1.5 bg-white/20 rounded-lg">
+              <Calendar className="h-4 w-4" />
             </div>
             Calendário Fiscal
           </h3>
@@ -110,6 +76,8 @@ export function Sidebar() {
         <div className="divide-y divide-gray-700">
           {loading ? (
             <div className="p-4 text-center text-gray-400 text-sm">Carregando...</div>
+          ) : fiscalCalendar.length === 0 ? (
+            <div className="p-4 text-center text-gray-500 text-sm">Nenhum evento cadastrado. Configure pelo painel admin.</div>
           ) : (
             fiscalCalendar.map((item, index) => (
               <div
@@ -153,6 +121,8 @@ export function Sidebar() {
         <div className="divide-y divide-gray-700">
           {highlightsLoading ? (
             <div className="p-4 text-center text-gray-400 text-sm">Carregando...</div>
+          ) : highlights.length === 0 ? (
+            <div className="p-4 text-center text-gray-500 text-sm">Nenhum destaque cadastrado. Configure pelo painel admin.</div>
           ) : (
             highlights.map((item, index) => (
               <div

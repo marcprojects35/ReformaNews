@@ -6,27 +6,65 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { MessageCircle, Send, X, Bot, Sparkles, Loader2 } from 'lucide-react'
 
-const WHATSAPP_NUMBER = "5534998623164"
 const WHATSAPP_MESSAGE = "Olá! Preciso de ajuda com questões tributárias."
+
+interface ChatApiResponse {
+  response: string
+  found: boolean
+  redirect_whatsapp: boolean
+  whatsapp_number?: string
+}
+
+interface ChatSettings {
+  welcome_message: string
+  fallback_message: string
+  whatsapp_number: string
+}
 
 export function ChatBot() {
   const [isOpen, setIsOpen] = useState(false)
-  const [messages, setMessages] = useState<Array<{ text: string; isUser: boolean; timestamp: Date }>>([
-    {
-      text: "Olá! 👋 Sou a IA Tributária do Reforma Tributária News. Estou aqui para ajudar com suas dúvidas sobre IBS/CBS, GTIN, Split Payment, Imposto Seletivo e muito mais. Como posso ajudar você?",
-      isUser: false,
-      timestamp: new Date(),
-    },
-  ])
+  const [messages, setMessages] = useState<Array<{ text: string; isUser: boolean; timestamp: Date }>>([])
   const [input, setInput] = useState("")
   const [isTyping, setIsTyping] = useState(false)
+  const [chatSettings, setChatSettings] = useState<ChatSettings | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  // Carregar configurações do chatbot do backend
+  useEffect(() => {
+    const loadChatSettings = async () => {
+      try {
+        const response = await fetch("http://localhost:8001/api/chatbot/settings")
+        if (response.ok) {
+          const data = await response.json()
+          setChatSettings(data)
+          setMessages([{
+            text: data.welcome_message,
+            isUser: false,
+            timestamp: new Date(),
+          }])
+        } else {
+          setMessages([{
+            text: "Olá! Estou temporariamente indisponível. Tente novamente em alguns instantes.",
+            isUser: false,
+            timestamp: new Date(),
+          }])
+        }
+      } catch {
+        setMessages([{
+          text: "Não foi possível conectar ao servidor. Tente novamente em alguns instantes.",
+          isUser: false,
+          timestamp: new Date(),
+        }])
+      }
+    }
+    loadChatSettings()
+  }, [])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages, isTyping])
 
-  const getAIResponse = async (userInput: string): Promise<string> => {
+  const getAIResponse = async (userInput: string): Promise<ChatApiResponse> => {
     try {
       const response = await fetch("/api/chat", {
         method: "POST",
@@ -42,27 +80,16 @@ export function ChatBot() {
         throw new Error(data.error || "Erro ao processar a pergunta")
       }
 
-      return data.response
+      return data as ChatApiResponse
     } catch (error) {
       console.error("[ChatBot] Erro:", error)
-      return "Desculpe, tive um problema técnico ao processar sua pergunta. Por favor, tente novamente."
+      return {
+        response: "Desculpe, tive um problema técnico ao processar sua pergunta. Por favor, tente novamente.",
+        found: false,
+        redirect_whatsapp: true,
+        whatsapp_number: chatSettings?.whatsapp_number || ""
+      }
     }
-  }
-
-  const shouldRedirectToWhatsApp = (aiResponse: string): boolean => {
-    const uncertainPhrases = [
-      "não tenho informações",
-      "não sei",
-      "não posso ajudar",
-      "não tenho certeza",
-      "desculpe",
-      "tive um problema",
-      "erro",
-      "não encontrei",
-      "não consigo",
-    ]
-    
-    return uncertainPhrases.some(phrase => aiResponse.toLowerCase().includes(phrase))
   }
 
   const handleSend = async () => {
@@ -75,27 +102,25 @@ export function ChatBot() {
     setIsTyping(true)
 
     try {
-      const response = await getAIResponse(userInput)
-      
-      if (shouldRedirectToWhatsApp(response)) {
-        setMessages((prev) => [
-          ...prev,
-          { 
-            text: "Desculpe, não consegui encontrar uma resposta precisa. Nossa equipe está pronta para ajudar pessoalmente!", 
-            isUser: false, 
-            timestamp: new Date() 
-          },
-        ])
-        
+      const apiResponse = await getAIResponse(userInput)
+
+      // Adicionar a resposta da IA
+      setMessages((prev) => [...prev, {
+        text: apiResponse.response,
+        isUser: false,
+        timestamp: new Date()
+      }])
+
+      // Se deve redirecionar para WhatsApp
+      if (apiResponse.redirect_whatsapp) {
         setTimeout(() => {
-          const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(WHATSAPP_MESSAGE + "\n\nMinha dúvida: " + userInput)}`
+          const whatsappNumber = apiResponse.whatsapp_number || chatSettings?.whatsapp_number || ""
+          const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(WHATSAPP_MESSAGE + "\n\nMinha dúvida: " + userInput)}`
           window.open(whatsappUrl, '_blank')
-        }, 1000)
-      } else {
-        setMessages((prev) => [...prev, { text: response, isUser: false, timestamp: new Date() }])
+        }, 1500)
       }
     } catch (error) {
-      console.error("[v0] Erro ao processar mensagem:", error)
+      console.error("[ChatBot] Erro ao processar mensagem:", error)
       setMessages((prev) => [
         ...prev,
         {
@@ -104,9 +129,9 @@ export function ChatBot() {
           timestamp: new Date(),
         },
       ])
-      
+
       setTimeout(() => {
-        const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(WHATSAPP_MESSAGE)}`
+        const whatsappUrl = `https://wa.me/${chatSettings?.whatsapp_number || ""}?text=${encodeURIComponent(WHATSAPP_MESSAGE)}`
         window.open(whatsappUrl, '_blank')
       }, 1500)
     } finally {
@@ -128,7 +153,7 @@ export function ChatBot() {
   }
 
   return (
-    <Card className="fixed bottom-8 left-8 w-[440px] max-h-[680px] shadow-2xl border-2 border-[#FFD700]/20 overflow-hidden animate-scale-in z-50 flex flex-col">
+    <Card className="fixed bottom-8 left-8 w-[440px] max-h-[680px] shadow-2xl border-2 border-[#FFD700]/20 overflow-hidden animate-scale-in z-50 flex flex-col p-0 gap-0">
       <CardHeader className="bg-gradient-to-r from-[#1a1a1a] to-[#2D3748] text-white flex flex-row items-center justify-between p-5 relative overflow-hidden flex-shrink-0">
         <div
           className="absolute inset-0 opacity-10"

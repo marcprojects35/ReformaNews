@@ -224,3 +224,217 @@ class WeeklyHighlightResponse(WeeklyHighlightBase):
 
     class Config:
         from_attributes = True
+
+# Chatbot Knowledge schemas
+class ChatKnowledgeBase(BaseModel):
+    question: str
+    answer: str
+    keywords: Optional[List[str]] = None
+    category: str = "geral"
+    source: str = "manual"
+    active: bool = True
+
+class ChatKnowledgeCreate(ChatKnowledgeBase):
+    pass
+
+class ChatKnowledgeUpdate(BaseModel):
+    question: Optional[str] = None
+    answer: Optional[str] = None
+    keywords: Optional[List[str]] = None
+    category: Optional[str] = None
+    source: Optional[str] = None
+    active: Optional[bool] = None
+
+class ChatKnowledgeResponse(ChatKnowledgeBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+# Unanswered Question schemas
+class UnansweredQuestionResponse(BaseModel):
+    id: int
+    question: str
+    user_session: Optional[str] = None
+    redirected_whatsapp: bool
+    resolved: bool
+    resolved_knowledge_id: Optional[int] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+# Chat Settings schemas
+class ChatSettingsBase(BaseModel):
+    welcome_message: str
+    fallback_message: str
+    whatsapp_number: str
+    active: bool = True
+
+class ChatSettingsUpdate(BaseModel):
+    welcome_message: Optional[str] = None
+    fallback_message: Optional[str] = None
+    whatsapp_number: Optional[str] = None
+    active: Optional[bool] = None
+
+class ChatSettingsResponse(ChatSettingsBase):
+    id: int
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+# Chat Request/Response schemas
+class ChatRequest(BaseModel):
+    message: str
+
+class ChatResponse(BaseModel):
+    response: str
+    found: bool
+    redirect_whatsapp: bool
+    whatsapp_number: Optional[str] = None
+
+class ChatTrainRequest(BaseModel):
+    message: str
+
+class ChatTrainResponse(BaseModel):
+    response: str
+
+class ChatSearchGoogleRequest(BaseModel):
+    query: str
+
+class ChatSearchGoogleResponse(BaseModel):
+    response: str
+    source: str = "google"
+
+# Calculator Config schemas
+class CalculatorConfigBase(BaseModel):
+    calculator_id: str
+    name: str
+    active: bool = True
+    order: int = 0
+
+class CalculatorConfigCreate(CalculatorConfigBase):
+    pass
+
+class CalculatorConfigUpdate(BaseModel):
+    active: Optional[bool] = None
+    order: Optional[int] = None
+
+class CalculatorConfigResponse(CalculatorConfigBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+# Calculator Parameters schemas
+class CalculatorParameterBase(BaseModel):
+    key: str
+    value: str
+    description: Optional[str] = None
+
+class CalculatorParameterCreate(CalculatorParameterBase):
+    pass
+
+class CalculatorParameterUpdate(BaseModel):
+    value: str
+
+class CalculatorParameterResponse(CalculatorParameterBase):
+    id: int
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class CalculatorParametersBulkUpdate(BaseModel):
+    ibs_estadual: Optional[str] = None
+    ibs_municipal: Optional[str] = None
+    cbs: Optional[str] = None
+
+# Document (Biblioteca) schemas
+class DocumentBase(BaseModel):
+    title: str
+    description: str
+    doc_type: str  # pdf, excel, video, link
+    category: str
+    file_size: Optional[str] = None
+    url: str
+    active: bool = True
+    order: int = 0
+
+class DocumentCreate(DocumentBase):
+    pass
+
+class DocumentUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    doc_type: Optional[str] = None
+    category: Optional[str] = None
+    file_size: Optional[str] = None
+    url: Optional[str] = None
+    active: Optional[bool] = None
+    order: Optional[int] = None
+
+class DocumentResponse(DocumentBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+# FAQ schemas
+class FAQBase(BaseModel):
+    category: str
+    question: str
+    answer: str
+    active: bool = True
+    order: int = 0
+
+class FAQCreate(FAQBase):
+    pass
+
+class FAQUpdate(BaseModel):
+    category: Optional[str] = None
+    question: Optional[str] = None
+    answer: Optional[str] = None
+    active: Optional[bool] = None
+    order: Optional[int] = None
+
+class FAQResponse(FAQBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+# Glossary Term schemas
+class GlossaryTermBase(BaseModel):
+    letter: str
+    term: str
+    definition: str
+    active: bool = True
+    order: int = 0
+
+class GlossaryTermCreate(GlossaryTermBase):
+    pass
+
+class GlossaryTermUpdate(BaseModel):
+    letter: Optional[str] = None
+    term: Optional[str] = None
+    definition: Optional[str] = None
+    active: Optional[bool] = None
+    order: Optional[int] = None
+
+class GlossaryTermResponse(GlossaryTermBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True

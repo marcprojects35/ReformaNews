@@ -5,9 +5,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
-import { Calculator, Info, AlertCircle } from 'lucide-react'
+import { Calculator, Info } from 'lucide-react'
 
-export function IbsCbsCalculator() {
+interface TaxParameters {
+  ibs_estadual: { value: string }
+  ibs_municipal: { value: string }
+  cbs: { value: string }
+}
+
+interface IbsCbsCalculatorProps {
+  taxParameters?: TaxParameters | null
+}
+
+export function IbsCbsCalculator({ taxParameters }: IbsCbsCalculatorProps) {
   const [productValue, setProductValue] = useState("")
   const [result, setResult] = useState<{
     ibsEstadual: number
@@ -18,15 +28,20 @@ export function IbsCbsCalculator() {
     finalPrice: number
   } | null>(null)
 
+  // Usar parâmetros do admin ou valores padrão
+  const ibsEstadualPercent = parseFloat(taxParameters?.ibs_estadual?.value || "9")
+  const ibsMunicipalPercent = parseFloat(taxParameters?.ibs_municipal?.value || "8")
+  const cbsPercent = parseFloat(taxParameters?.cbs?.value || "10")
+  const totalPercent = ibsEstadualPercent + ibsMunicipalPercent + cbsPercent
+
   const calculate = () => {
     const value = Number.parseFloat(productValue)
     if (isNaN(value) || value <= 0) return
 
-    // Alíquota IBS = 17% (exemplo ilustrativo)
-    // Sendo: 9% estadual + 8% municipal
-    const ibsEstadualRate = 0.09 // 9% IBS Estadual (substitui ICMS)
-    const ibsMunicipalRate = 0.08 // 8% IBS Municipal (substitui ISS)
-    const cbsRate = 0.1 // 10% CBS (substitui PIS/COFINS)
+    // Usar alíquotas configuradas pelo admin
+    const ibsEstadualRate = ibsEstadualPercent / 100
+    const ibsMunicipalRate = ibsMunicipalPercent / 100
+    const cbsRate = cbsPercent / 100
 
     const ibsEstadual = value * ibsEstadualRate
     const ibsMunicipal = value * ibsMunicipalRate
@@ -53,7 +68,7 @@ export function IbsCbsCalculator() {
             <Calculator className="h-6 w-6" />
           </div>
           <div>
-            <CardTitle className="text-2xl">Calculadora IBS/CBS Detalhada</CardTitle>
+            <CardTitle className="text-2xl">Calculadora IBS/CBS Manual</CardTitle>
             <CardDescription className="text-white/90">
               Calcule os impostos com detalhamento estadual e municipal
             </CardDescription>
@@ -61,53 +76,12 @@ export function IbsCbsCalculator() {
         </div>
       </CardHeader>
       <CardContent className="p-6 space-y-6">
-        <div className="space-y-4">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex gap-3 mb-3">
-              <Info className="h-5 w-5 text-[#0046B3] flex-shrink-0 mt-0.5" />
-              <div>
-                <h4 className="font-bold text-[#0046B3] mb-2">O que é IBS?</h4>
-                <p className="text-sm text-gray-700 leading-relaxed">
-                  <strong>IBS (Imposto sobre Bens e Serviços)</strong> é o novo tributo SUBNACIONAL que substituirá o
-                  ICMS e ISS a partir de 2033. É composto por duas partes:
-                </p>
-                <ul className="text-sm text-gray-700 mt-2 space-y-1 ml-4 list-disc">
-                  <li>
-                    <strong>IBS Estadual (9%):</strong> Substitui o ICMS, arrecadado pelos estados
-                  </li>
-                  <li>
-                    <strong>IBS Municipal (8%):</strong> Substitui o ISS, arrecadado pelos municípios
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <div className="flex gap-3">
-              <Info className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
-              <div>
-                <h4 className="font-bold text-green-700 mb-2">O que é CBS?</h4>
-                <p className="text-sm text-gray-700 leading-relaxed">
-                  <strong>CBS (Contribuição sobre Bens e Serviços)</strong> é o novo tributo FEDERAL que substituirá
-                  PIS e COFINS a partir de 2027. Tem alíquota de 10% e é arrecadado pela Receita Federal.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-            <div className="flex gap-3">
-              <AlertCircle className="h-5 w-5 text-[#FF7A00] flex-shrink-0 mt-0.5" />
-              <div>
-                <h4 className="font-bold text-[#FF7A00] mb-2">Modelo IVA Dual Brasileiro</h4>
-                <p className="text-sm text-gray-700 leading-relaxed">
-                  O Brasil adotou o <strong>IVA Dual</strong>, onde IBS (subnacional) + CBS (federal) = 27% total. Os
-                  impostos são destacados "por fora" do preço e seguem o princípio da não-cumulatividade (créditos
-                  tributários na cadeia produtiva).
-                </p>
-              </div>
-            </div>
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex gap-3">
+            <Info className="h-5 w-5 text-[#0046B3] flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-gray-700 leading-relaxed">
+              Calculadora com detalhamento de IBS (Estadual {ibsEstadualPercent}% + Municipal {ibsMunicipalPercent}%) e CBS ({cbsPercent}%). Alíquota total: <strong>{totalPercent}%</strong>. Insira o valor do produto para calcular os impostos.
+            </p>
           </div>
         </div>
 
@@ -151,7 +125,7 @@ export function IbsCbsCalculator() {
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
                   <div className="flex justify-between items-center">
                     <div>
-                      <p className="text-sm font-semibold text-[#0046B3]">IBS Estadual (9%)</p>
+                      <p className="text-sm font-semibold text-[#0046B3]">IBS Estadual ({ibsEstadualPercent}%)</p>
                       <p className="text-xs text-gray-600">Substitui o ICMS - Arrecadado pelo Estado</p>
                     </div>
                     <span className="text-lg font-bold text-[#0046B3]">{formatCurrency(result.ibsEstadual)}</span>
@@ -161,7 +135,7 @@ export function IbsCbsCalculator() {
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
                   <div className="flex justify-between items-center">
                     <div>
-                      <p className="text-sm font-semibold text-[#0046B3]">IBS Municipal (8%)</p>
+                      <p className="text-sm font-semibold text-[#0046B3]">IBS Municipal ({ibsMunicipalPercent}%)</p>
                       <p className="text-xs text-gray-600">Substitui o ISS - Arrecadado pelo Município</p>
                     </div>
                     <span className="text-lg font-bold text-[#0046B3]">{formatCurrency(result.ibsMunicipal)}</span>
@@ -171,7 +145,7 @@ export function IbsCbsCalculator() {
                 <div className="bg-blue-100 border-2 border-blue-300 rounded-lg p-4">
                   <div className="flex justify-between items-center">
                     <div>
-                      <p className="text-sm font-bold text-[#0046B3]">IBS Total (17%)</p>
+                      <p className="text-sm font-bold text-[#0046B3]">IBS Total ({ibsEstadualPercent + ibsMunicipalPercent}%)</p>
                       <p className="text-xs text-gray-600">Estadual + Municipal</p>
                     </div>
                     <span className="text-xl font-bold text-[#0046B3]">{formatCurrency(result.ibsTotal)}</span>
@@ -181,7 +155,7 @@ export function IbsCbsCalculator() {
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                   <div className="flex justify-between items-center">
                     <div>
-                      <p className="text-sm font-semibold text-green-700">CBS (10%)</p>
+                      <p className="text-sm font-semibold text-green-700">CBS ({cbsPercent}%)</p>
                       <p className="text-xs text-gray-600">Substitui PIS/COFINS - Arrecadado pela União</p>
                     </div>
                     <span className="text-lg font-bold text-green-700">{formatCurrency(result.cbs)}</span>
@@ -189,7 +163,7 @@ export function IbsCbsCalculator() {
                 </div>
 
                 <div className="flex justify-between items-center p-4 bg-orange-50 rounded-lg border border-orange-200">
-                  <span className="text-sm font-medium text-gray-600">Total de Impostos (27%)</span>
+                  <span className="text-sm font-medium text-gray-600">Total de Impostos ({totalPercent}%)</span>
                   <span className="text-lg font-bold text-[#FF7A00]">{formatCurrency(result.total)}</span>
                 </div>
 

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Newspaper, Image as ImageIcon, Settings, LogOut, LayoutDashboard, Globe, Sparkles, Calendar, TrendingUp, FileText } from "lucide-react"
+import { Newspaper, Image as ImageIcon, Settings, LogOut, LayoutDashboard, Globe, Sparkles, Calendar, TrendingUp, FileText, Bot, Calculator } from "lucide-react"
 
 export default function AdminDashboard() {
   const router = useRouter()
@@ -214,6 +214,41 @@ export default function AdminDashboard() {
                 <CardTitle className="text-white mb-2">Jornal / Newsletter</CardTitle>
                 <p className="text-gray-400 text-sm">
                   Gerenciar edições do jornal em PDF
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link href="/admin/chatbot">
+            <Card className="bg-gray-800/50 border-gray-700 hover:border-[#FFD700] transition-all cursor-pointer group relative">
+              <div className="absolute -top-2 -right-2 bg-gradient-to-r from-[#FFD700] to-[#FFC107] text-gray-900 px-3 py-1 rounded-full text-xs font-bold shadow-lg">
+                IA
+              </div>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <Bot className="w-12 h-12 text-[#FFD700] group-hover:scale-110 transition-transform" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <CardTitle className="text-white mb-2">Chatbot IA</CardTitle>
+                <p className="text-gray-400 text-sm">
+                  Treinar e gerenciar respostas do chatbot
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link href="/admin/calculadoras">
+            <Card className="bg-gray-800/50 border-gray-700 hover:border-[#FFD700] transition-all cursor-pointer group">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <Calculator className="w-12 h-12 text-[#FFD700] group-hover:scale-110 transition-transform" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <CardTitle className="text-white mb-2">Calculadoras</CardTitle>
+                <p className="text-gray-400 text-sm">
+                  Ativar/desativar calculadoras e configurar alíquotas
                 </p>
               </CardContent>
             </Card>

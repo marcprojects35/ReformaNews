@@ -103,7 +103,7 @@ export function NewsGrid({ searchQuery = "", activeFilters = [] }: NewsGridProps
         </div>
         <Button
           variant="outline"
-          className="border-2 border-[#FFD700] text-[#1a1a1a] hover:bg-[#FFD700] hover:text-gray-900 bg-white transition-all duration-300 font-semibold shadow-md hover:shadow-lg"
+          className="border-2 border-[#FFD700] text-gray-900 bg-gradient-to-r from-[#FFD700] to-[#FFC107] hover:from-[#FFC107] hover:to-[#FFD700] transition-all duration-300 font-semibold shadow-md hover:shadow-lg hover:scale-105"
         >
           Ver todas
           <ArrowRight className="ml-2 h-4 w-4" />
