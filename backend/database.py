@@ -212,6 +212,19 @@ class FAQ(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+class Writer(Base):
+    """Redatores e colunistas"""
+    __tablename__ = "writers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    role = Column(String, default="Colunista")
+    image_url = Column(String, nullable=True)
+    active = Column(Boolean, default=True)
+    order = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
 class GlossaryTerm(Base):
     """Termos do glossário tributário"""
     __tablename__ = "glossary_terms"
@@ -261,7 +274,7 @@ ChatModels = [ChatKnowledge, UnansweredQuestion, ChatSettings]
 # Modelos principais (para criar no PostgreSQL)
 MainModels = [User, News, NewsSource, PendingNews, BannerSlide, Settings, Newsletter,
               FiscalCalendar, WeeklyHighlight, CalculatorConfig, CalculatorParameters,
-              Document, FAQ, GlossaryTerm]
+              Document, FAQ, GlossaryTerm, Writer]
 
 async def init_db():
     """Inicializa ambos os bancos de dados"""

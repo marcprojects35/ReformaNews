@@ -22,7 +22,7 @@ from database import (
     init_db, get_db, get_chat_db, engine, chat_engine,
     User, News, BannerSlide, Settings, NewsSource, PendingNews, Newsletter,
     FiscalCalendar, WeeklyHighlight, ChatKnowledge, UnansweredQuestion, ChatSettings,
-    CalculatorConfig, CalculatorParameters, Document, FAQ, GlossaryTerm
+    CalculatorConfig, CalculatorParameters, Document, FAQ, GlossaryTerm, Writer
 )
 from schemas import (
     UserLogin, Token, NewsCreate, NewsUpdate, NewsResponse,
@@ -42,7 +42,8 @@ from schemas import (
     CalculatorParameterResponse, CalculatorParametersBulkUpdate,
     DocumentCreate, DocumentUpdate, DocumentResponse,
     FAQCreate, FAQUpdate, FAQResponse,
-    GlossaryTermCreate, GlossaryTermUpdate, GlossaryTermResponse
+    GlossaryTermCreate, GlossaryTermUpdate, GlossaryTermResponse,
+    WriterCreate, WriterUpdate, WriterResponse
 )
 from auth import (
     authenticate_user, create_access_token, get_current_user,
@@ -1482,6 +1483,76 @@ async def delete_faq(
     await db.delete(faq)
     await db.commit()
     return {"message": "FAQ deletada com sucesso"}
+
+# ========== WRITER ENDPOINTS ==========
+
+@app.get("/api/writers", response_model=List[WriterResponse])
+async def get_writers(db: AsyncSession = Depends(get_db)):
+    """Lista todos os redatores ativos"""
+    result = await db.execute(
+        select(Writer).where(Writer.active == True).order_by(Writer.order)
+    )
+    writers = result.scalars().all()
+    return writers
+
+@app.get("/api/writers/all", response_model=List[WriterResponse])
+async def get_all_writers(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Lista todos os redatores (admin)"""
+    result = await db.execute(select(Writer).order_by(Writer.order))
+    writers = result.scalars().all()
+    return writers
+
+@app.post("/api/writers", response_model=WriterResponse)
+async def create_writer(
+    writer_data: WriterCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Criar novo redator"""
+    writer = Writer(**writer_data.model_dump())
+    db.add(writer)
+    await db.commit()
+    await db.refresh(writer)
+    return writer
+
+@app.put("/api/writers/{writer_id}", response_model=WriterResponse)
+async def update_writer(
+    writer_id: int,
+    writer_data: WriterUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Atualizar redator"""
+    result = await db.execute(select(Writer).where(Writer.id == writer_id))
+    writer = result.scalar_one_or_none()
+    if not writer:
+        raise HTTPException(status_code=404, detail="Redator não encontrado")
+
+    for key, value in writer_data.model_dump(exclude_unset=True).items():
+        setattr(writer, key, value)
+
+    await db.commit()
+    await db.refresh(writer)
+    return writer
+
+@app.delete("/api/writers/{writer_id}")
+async def delete_writer(
+    writer_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Deletar redator"""
+    result = await db.execute(select(Writer).where(Writer.id == writer_id))
+    writer = result.scalar_one_or_none()
+    if not writer:
+        raise HTTPException(status_code=404, detail="Redator não encontrado")
+
+    await db.delete(writer)
+    await db.commit()
+    return {"message": "Redator deletado com sucesso"}
 
 # ========== GLOSSARY ENDPOINTS ==========
 

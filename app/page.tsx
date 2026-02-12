@@ -10,6 +10,7 @@ import { FloatingCalculatorButton } from "@/components/features/floating-calcula
 import { SearchBar } from "@/components/features/search-bar"
 import { NewsletterDownload } from "@/components/features/newsletter-download"
 import { HeroCarousel } from "@/components/features/hero-carousel"
+import { WritersSection } from "@/components/features/writers-section"
 
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState("")
@@ -40,6 +41,7 @@ export default function Home() {
             <Sidebar />
           </div>
         </div>
+        <WritersSection />
         <FloatingCalculatorButton />
         <ChatBot />
       </main>
