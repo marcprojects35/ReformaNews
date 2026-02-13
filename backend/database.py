@@ -255,6 +255,19 @@ class Article(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+class Sponsor(Base):
+    """Patrocinadores do portal"""
+    __tablename__ = "sponsors"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    logo_url = Column(String, nullable=True)
+    website_url = Column(String, nullable=True)
+    active = Column(Boolean, default=True)
+    order = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
 class GlossaryTerm(Base):
     """Termos do glossário tributário"""
     __tablename__ = "glossary_terms"
@@ -304,7 +317,7 @@ ChatModels = [ChatKnowledge, UnansweredQuestion, ChatSettings]
 # Modelos principais (para criar no PostgreSQL)
 MainModels = [User, News, NewsSource, PendingNews, BannerSlide, Settings, Newsletter,
               FiscalCalendar, WeeklyHighlight, CalculatorConfig, CalculatorParameters,
-              Document, FAQ, GlossaryTerm, Writer, ArticleCategory, Article]
+              Document, FAQ, GlossaryTerm, Writer, Sponsor, ArticleCategory, Article]
 
 async def init_db():
     """Inicializa ambos os bancos de dados"""

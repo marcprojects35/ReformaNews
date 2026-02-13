@@ -34,7 +34,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { ArrowLeft, Plus, Pencil, Trash2, FileText, Loader2, Upload, FolderOpen } from "lucide-react"
+import { ArrowLeft, Plus, Pencil, Trash2, FileText, Loader2, Upload, FolderOpen, X } from "lucide-react"
 
 interface ArticleCategory {
   id: number

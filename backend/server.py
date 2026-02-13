@@ -23,7 +23,7 @@ from database import (
     User, News, BannerSlide, Settings, NewsSource, PendingNews, Newsletter,
     FiscalCalendar, WeeklyHighlight, ChatKnowledge, UnansweredQuestion, ChatSettings,
     CalculatorConfig, CalculatorParameters, Document, FAQ, GlossaryTerm, Writer,
-    ArticleCategory, Article
+    ArticleCategory, Article, Sponsor
 )
 from schemas import (
     UserLogin, Token, NewsCreate, NewsUpdate, NewsResponse,
@@ -46,7 +46,8 @@ from schemas import (
     GlossaryTermCreate, GlossaryTermUpdate, GlossaryTermResponse,
     WriterCreate, WriterUpdate, WriterResponse,
     ArticleCategoryCreate, ArticleCategoryUpdate, ArticleCategoryResponse,
-    ArticleCreate, ArticleUpdate, ArticleResponse, ArticleWithDetailsResponse
+    ArticleCreate, ArticleUpdate, ArticleResponse, ArticleWithDetailsResponse,
+    SponsorCreate, SponsorUpdate, SponsorResponse
 )
 from auth import (
     authenticate_user, create_access_token, get_current_user,
@@ -1756,6 +1757,66 @@ async def delete_article(
     await db.delete(article)
     await db.commit()
     return {"message": "Artigo deletado com sucesso"}
+
+# ========== SPONSOR ENDPOINTS ==========
+
+@app.get("/api/sponsors", response_model=List[SponsorResponse])
+async def get_sponsors(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(Sponsor).where(Sponsor.active == True).order_by(Sponsor.order)
+    )
+    return result.scalars().all()
+
+@app.get("/api/sponsors/all", response_model=List[SponsorResponse])
+async def get_all_sponsors(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(Sponsor).order_by(Sponsor.order))
+    return result.scalars().all()
+
+@app.post("/api/sponsors", response_model=SponsorResponse)
+async def create_sponsor(
+    sponsor_data: SponsorCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    sponsor = Sponsor(**sponsor_data.model_dump())
+    db.add(sponsor)
+    await db.commit()
+    await db.refresh(sponsor)
+    return sponsor
+
+@app.put("/api/sponsors/{sponsor_id}", response_model=SponsorResponse)
+async def update_sponsor(
+    sponsor_id: int,
+    sponsor_data: SponsorUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(Sponsor).where(Sponsor.id == sponsor_id))
+    sponsor = result.scalar_one_or_none()
+    if not sponsor:
+        raise HTTPException(status_code=404, detail="Patrocinador não encontrado")
+    for key, value in sponsor_data.model_dump(exclude_unset=True).items():
+        setattr(sponsor, key, value)
+    await db.commit()
+    await db.refresh(sponsor)
+    return sponsor
+
+@app.delete("/api/sponsors/{sponsor_id}")
+async def delete_sponsor(
+    sponsor_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(Sponsor).where(Sponsor.id == sponsor_id))
+    sponsor = result.scalar_one_or_none()
+    if not sponsor:
+        raise HTTPException(status_code=404, detail="Patrocinador não encontrado")
+    await db.delete(sponsor)
+    await db.commit()
+    return {"message": "Patrocinador deletado com sucesso"}
 
 # ========== GLOSSARY ENDPOINTS ==========
 

@@ -2,10 +2,19 @@
 
 import { useEffect, useState } from "react"
 import { Mail, Phone, MapPin, Globe, Instagram, Linkedin } from "lucide-react"
+import Image from "next/image"
+
+interface Sponsor {
+  id: number
+  name: string
+  logo_url: string | null
+  website_url: string | null
+}
 
 export function Footer() {
   const [whatsappNumber, setWhatsappNumber] = useState("")
   const [whatsappDisplay, setWhatsappDisplay] = useState("")
+  const [sponsors, setSponsors] = useState<Sponsor[]>([])
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -19,7 +28,6 @@ export function Footer() {
           })
           const number = settingsMap.whatsapp_number || ""
           setWhatsappNumber(number)
-          // Formatar para exibição: 5534998623164 -> (34) 99862-3164
           if (number.length >= 12) {
             const ddd = number.slice(2, 4)
             const part1 = number.slice(4, 9)
@@ -31,7 +39,21 @@ export function Footer() {
         console.error("Erro ao carregar configurações do footer")
       }
     }
+
+    const loadSponsors = async () => {
+      try {
+        const response = await fetch("http://localhost:8001/api/sponsors")
+        if (response.ok) {
+          const data = await response.json()
+          setSponsors(Array.isArray(data) ? data : [])
+        }
+      } catch {
+        console.error("Erro ao carregar patrocinadores")
+      }
+    }
+
     loadSettings()
+    loadSponsors()
   }, [])
 
   return (
@@ -163,6 +185,42 @@ export function Footer() {
             </div>
           </div>
         </div>
+
+        {/* Sponsors */}
+        {sponsors.length > 0 && (
+          <div className="border-t border-white/20 pt-8 pb-8">
+            <p className="text-center text-sm font-semibold text-[#FFD700] mb-6">
+              Conheça os nossos patrocinadores:
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-8">
+              {sponsors.map((sponsor) => (
+                <a
+                  key={sponsor.id}
+                  href={sponsor.website_url || "#"}
+                  target={sponsor.website_url ? "_blank" : undefined}
+                  rel="noopener noreferrer"
+                  className="flex flex-col items-center gap-2 group"
+                >
+                  <div className="relative w-20 h-20 rounded-full flex items-center justify-center overflow-hidden border-2 border-[#FFD700]/30 group-hover:border-[#FFD700] group-hover:shadow-lg group-hover:shadow-yellow-500/10 transition-all duration-300 group-hover:scale-105">
+                    {sponsor.logo_url ? (
+                      <Image
+                        src={sponsor.logo_url}
+                        alt={sponsor.name}
+                        fill
+                        className="object-cover"
+                      />
+                    ) : (
+                      <span className="text-gray-500 text-sm font-bold bg-white/95 w-full h-full flex items-center justify-center">{sponsor.name.slice(0, 2).toUpperCase()}</span>
+                    )}
+                  </div>
+                  <span className="text-xs text-white/70 group-hover:text-[#FFD700] transition-colors text-center max-w-[100px] truncate">
+                    {sponsor.name}
+                  </span>
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="border-t border-white/20 pt-8 text-center space-y-2">
           <p className="text-sm text-white/80 font-medium">

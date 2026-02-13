@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Newspaper, Image as ImageIcon, Settings, LogOut, LayoutDashboard, Globe, Sparkles, Calendar, TrendingUp, FileText, Bot, Calculator, Users } from "lucide-react"
+import { Newspaper, Image as ImageIcon, Settings, LogOut, LayoutDashboard, Globe, Sparkles, Calendar, TrendingUp, FileText, Bot, Calculator, Users, Award } from "lucide-react"
 
 export default function AdminDashboard() {
   const router = useRouter()
@@ -281,6 +281,22 @@ export default function AdminDashboard() {
                 <CardTitle className="text-white mb-2">Artigos</CardTitle>
                 <p className="text-gray-400 text-sm">
                   Gerenciar artigos e categorias de conteúdo
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link href="/admin/patrocinadores">
+            <Card className="bg-gray-800/50 border-gray-700 hover:border-[#FFD700] transition-all cursor-pointer group">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <Award className="w-12 h-12 text-[#FFD700] group-hover:scale-110 transition-transform" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <CardTitle className="text-white mb-2">Patrocinadores</CardTitle>
+                <p className="text-gray-400 text-sm">
+                  Gerenciar patrocinadores exibidos no rodapé
                 </p>
               </CardContent>
             </Card>

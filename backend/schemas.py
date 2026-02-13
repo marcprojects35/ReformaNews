@@ -536,3 +536,29 @@ class ArticleWithDetailsResponse(ArticleBase):
 
     class Config:
         from_attributes = True
+
+# Sponsor schemas
+class SponsorBase(BaseModel):
+    name: str
+    logo_url: Optional[str] = None
+    website_url: Optional[str] = None
+    active: bool = True
+    order: int = 0
+
+class SponsorCreate(SponsorBase):
+    pass
+
+class SponsorUpdate(BaseModel):
+    name: Optional[str] = None
+    logo_url: Optional[str] = None
+    website_url: Optional[str] = None
+    active: Optional[bool] = None
+    order: Optional[int] = None
+
+class SponsorResponse(SponsorBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
