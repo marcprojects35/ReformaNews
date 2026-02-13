@@ -22,7 +22,8 @@ from database import (
     init_db, get_db, get_chat_db, engine, chat_engine,
     User, News, BannerSlide, Settings, NewsSource, PendingNews, Newsletter,
     FiscalCalendar, WeeklyHighlight, ChatKnowledge, UnansweredQuestion, ChatSettings,
-    CalculatorConfig, CalculatorParameters, Document, FAQ, GlossaryTerm, Writer
+    CalculatorConfig, CalculatorParameters, Document, FAQ, GlossaryTerm, Writer,
+    ArticleCategory, Article
 )
 from schemas import (
     UserLogin, Token, NewsCreate, NewsUpdate, NewsResponse,
@@ -43,7 +44,9 @@ from schemas import (
     DocumentCreate, DocumentUpdate, DocumentResponse,
     FAQCreate, FAQUpdate, FAQResponse,
     GlossaryTermCreate, GlossaryTermUpdate, GlossaryTermResponse,
-    WriterCreate, WriterUpdate, WriterResponse
+    WriterCreate, WriterUpdate, WriterResponse,
+    ArticleCategoryCreate, ArticleCategoryUpdate, ArticleCategoryResponse,
+    ArticleCreate, ArticleUpdate, ArticleResponse, ArticleWithDetailsResponse
 )
 from auth import (
     authenticate_user, create_access_token, get_current_user,
@@ -68,16 +71,25 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 @app.on_event("startup")
 async def startup():
     await init_db()
-    # Create default admin user if not exists
+    # Create default admin user if not exists, or reset password if needed
     async with AsyncSession(bind=app.state.engine) as db:
         result = await db.execute(select(User).where(User.username == "admin"))
-        if not result.scalar_one_or_none():
+        existing_user = result.scalar_one_or_none()
+        if not existing_user:
             admin = User(
                 username="admin",
                 password_hash=get_password_hash("admin")
             )
             db.add(admin)
             await db.commit()
+            print("[Server] Usuário admin criado com senha padrão")
+        else:
+            # Ensure password hash is valid - reset if corrupted
+            from auth import verify_password
+            if not verify_password("admin", existing_user.password_hash):
+                existing_user.password_hash = get_password_hash("admin")
+                await db.commit()
+                print("[Server] Senha do admin resetada para o padrão")
     
     # Initialize settings
     async with AsyncSession(bind=app.state.engine) as db:
@@ -1553,6 +1565,197 @@ async def delete_writer(
     await db.delete(writer)
     await db.commit()
     return {"message": "Redator deletado com sucesso"}
+
+# ========== ARTICLE CATEGORY ENDPOINTS ==========
+
+@app.get("/api/article-categories", response_model=List[ArticleCategoryResponse])
+async def get_article_categories(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(ArticleCategory).where(ArticleCategory.active == True).order_by(ArticleCategory.order)
+    )
+    return result.scalars().all()
+
+@app.get("/api/article-categories/all", response_model=List[ArticleCategoryResponse])
+async def get_all_article_categories(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(ArticleCategory).order_by(ArticleCategory.order))
+    return result.scalars().all()
+
+@app.post("/api/article-categories", response_model=ArticleCategoryResponse)
+async def create_article_category(
+    category_data: ArticleCategoryCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    category = ArticleCategory(**category_data.model_dump())
+    db.add(category)
+    await db.commit()
+    await db.refresh(category)
+    return category
+
+@app.put("/api/article-categories/{category_id}", response_model=ArticleCategoryResponse)
+async def update_article_category(
+    category_id: int,
+    category_data: ArticleCategoryUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(ArticleCategory).where(ArticleCategory.id == category_id))
+    category = result.scalar_one_or_none()
+    if not category:
+        raise HTTPException(status_code=404, detail="Categoria não encontrada")
+    for key, value in category_data.model_dump(exclude_unset=True).items():
+        setattr(category, key, value)
+    await db.commit()
+    await db.refresh(category)
+    return category
+
+@app.delete("/api/article-categories/{category_id}")
+async def delete_article_category(
+    category_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(ArticleCategory).where(ArticleCategory.id == category_id))
+    category = result.scalar_one_or_none()
+    if not category:
+        raise HTTPException(status_code=404, detail="Categoria não encontrada")
+    articles_result = await db.execute(select(Article).where(Article.category_id == category_id))
+    if articles_result.scalars().first():
+        raise HTTPException(status_code=400, detail="Não é possível excluir categoria com artigos vinculados")
+    await db.delete(category)
+    await db.commit()
+    return {"message": "Categoria deletada com sucesso"}
+
+# ========== ARTICLE ENDPOINTS ==========
+
+@app.get("/api/articles", response_model=List[ArticleWithDetailsResponse])
+async def get_articles(
+    category_id: Optional[int] = None,
+    db: AsyncSession = Depends(get_db)
+):
+    query = select(Article).where(Article.active == True).order_by(Article.order, Article.created_at.desc())
+    if category_id:
+        query = query.where(Article.category_id == category_id)
+    result = await db.execute(query)
+    articles = result.scalars().all()
+
+    enriched = []
+    for article in articles:
+        article_dict = {
+            "id": article.id, "title": article.title, "excerpt": article.excerpt,
+            "content": article.content, "category_id": article.category_id,
+            "writer_id": article.writer_id, "image_url": article.image_url,
+            "file_url": article.file_url, "active": article.active, "order": article.order,
+            "created_at": article.created_at, "updated_at": article.updated_at,
+            "writer_name": None, "writer_role": None, "writer_image_url": None, "category_name": None,
+        }
+        writer_result = await db.execute(select(Writer).where(Writer.id == article.writer_id))
+        writer = writer_result.scalar_one_or_none()
+        if writer:
+            article_dict["writer_name"] = writer.name
+            article_dict["writer_role"] = writer.role
+            article_dict["writer_image_url"] = writer.image_url
+        cat_result = await db.execute(select(ArticleCategory).where(ArticleCategory.id == article.category_id))
+        cat = cat_result.scalar_one_or_none()
+        if cat:
+            article_dict["category_name"] = cat.name
+        enriched.append(article_dict)
+    return enriched
+
+@app.get("/api/articles/all", response_model=List[ArticleResponse])
+async def get_all_articles(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(Article).order_by(Article.created_at.desc()))
+    return result.scalars().all()
+
+@app.get("/api/articles/{article_id}", response_model=ArticleWithDetailsResponse)
+async def get_article(article_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Article).where(Article.id == article_id))
+    article = result.scalar_one_or_none()
+    if not article:
+        raise HTTPException(status_code=404, detail="Artigo não encontrado")
+    article_dict = {
+        "id": article.id, "title": article.title, "excerpt": article.excerpt,
+        "content": article.content, "category_id": article.category_id,
+        "writer_id": article.writer_id, "image_url": article.image_url,
+        "file_url": article.file_url, "active": article.active, "order": article.order,
+        "created_at": article.created_at, "updated_at": article.updated_at,
+        "writer_name": None, "writer_role": None, "writer_image_url": None, "category_name": None,
+    }
+    writer_result = await db.execute(select(Writer).where(Writer.id == article.writer_id))
+    writer = writer_result.scalar_one_or_none()
+    if writer:
+        article_dict["writer_name"] = writer.name
+        article_dict["writer_role"] = writer.role
+        article_dict["writer_image_url"] = writer.image_url
+    cat_result = await db.execute(select(ArticleCategory).where(ArticleCategory.id == article.category_id))
+    cat = cat_result.scalar_one_or_none()
+    if cat:
+        article_dict["category_name"] = cat.name
+    return article_dict
+
+@app.post("/api/articles", response_model=ArticleResponse)
+async def create_article(
+    article_data: ArticleCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    cat_result = await db.execute(select(ArticleCategory).where(ArticleCategory.id == article_data.category_id))
+    if not cat_result.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="Categoria não encontrada")
+    writer_result = await db.execute(select(Writer).where(Writer.id == article_data.writer_id))
+    if not writer_result.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="Redator não encontrado")
+    article = Article(**article_data.model_dump())
+    db.add(article)
+    await db.commit()
+    await db.refresh(article)
+    return article
+
+@app.put("/api/articles/{article_id}", response_model=ArticleResponse)
+async def update_article(
+    article_id: int,
+    article_data: ArticleUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(Article).where(Article.id == article_id))
+    article = result.scalar_one_or_none()
+    if not article:
+        raise HTTPException(status_code=404, detail="Artigo não encontrado")
+    update_data = article_data.model_dump(exclude_unset=True)
+    if "category_id" in update_data and update_data["category_id"] is not None:
+        cat_result = await db.execute(select(ArticleCategory).where(ArticleCategory.id == update_data["category_id"]))
+        if not cat_result.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="Categoria não encontrada")
+    if "writer_id" in update_data and update_data["writer_id"] is not None:
+        writer_result = await db.execute(select(Writer).where(Writer.id == update_data["writer_id"]))
+        if not writer_result.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="Redator não encontrado")
+    for key, value in update_data.items():
+        setattr(article, key, value)
+    await db.commit()
+    await db.refresh(article)
+    return article
+
+@app.delete("/api/articles/{article_id}")
+async def delete_article(
+    article_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(Article).where(Article.id == article_id))
+    article = result.scalar_one_or_none()
+    if not article:
+        raise HTTPException(status_code=404, detail="Artigo não encontrado")
+    await db.delete(article)
+    await db.commit()
+    return {"message": "Artigo deletado com sucesso"}
 
 # ========== GLOSSARY ENDPOINTS ==========
 

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Menu, Search, X, Home, Wrench, Newspaper, BookOpen, MessageCircle, Settings, ChevronDown, PlayCircle, Calculator, FileText } from "lucide-react"
 import Image from "next/image"
@@ -12,6 +12,21 @@ export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [conteudoOpen, setConteudoOpen] = useState(false)
   const [mobileConteudoOpen, setMobileConteudoOpen] = useState(false)
+  const conteudoTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  const handleConteudoEnter = useCallback(() => {
+    if (conteudoTimeoutRef.current) {
+      clearTimeout(conteudoTimeoutRef.current)
+      conteudoTimeoutRef.current = null
+    }
+    setConteudoOpen(true)
+  }, [])
+
+  const handleConteudoLeave = useCallback(() => {
+    conteudoTimeoutRef.current = setTimeout(() => {
+      setConteudoOpen(false)
+    }, 300)
+  }, [])
   const [settings, setSettings] = useState({
     whatsapp_number: "",
     logo_url: "",
@@ -77,8 +92,8 @@ export function Header() {
               </Link>
               <div
                 className="relative"
-                onMouseEnter={() => setConteudoOpen(true)}
-                onMouseLeave={() => setConteudoOpen(false)}
+                onMouseEnter={handleConteudoEnter}
+                onMouseLeave={handleConteudoLeave}
               >
                 <button
                   className="text-sm font-semibold text-gray-200 hover:text-[#FFD700] transition-all duration-300 relative group flex items-center gap-1"
@@ -89,7 +104,8 @@ export function Header() {
                 </button>
 
                 {conteudoOpen && (
-                  <div className="absolute top-full left-0 mt-2 w-56 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl shadow-black/40 py-2 z-50 animate-fade-in">
+                  <div className="absolute top-full left-0 pt-2 z-50">
+                  <div className="w-56 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl shadow-black/40 py-2 animate-fade-in">
                     <Link
                       href="/aulas-e-podcasts"
                       className="flex items-center gap-3 px-4 py-3 text-sm text-gray-200 hover:bg-gray-700 hover:text-[#FFD700] transition-colors"
@@ -111,6 +127,7 @@ export function Header() {
                       <FileText className="h-4 w-4 text-[#FFD700]" />
                       Artigos
                     </Link>
+                  </div>
                   </div>
                 )}
               </div>

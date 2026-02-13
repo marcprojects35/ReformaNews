@@ -225,6 +225,36 @@ class Writer(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
+class ArticleCategory(Base):
+    """Categorias dos artigos (abas/tabs)"""
+    __tablename__ = "article_categories"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    slug = Column(String, nullable=True, index=True)
+    active = Column(Boolean, default=True)
+    order = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class Article(Base):
+    """Artigos publicados pelos redatores"""
+    __tablename__ = "articles"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String, nullable=False)
+    excerpt = Column(Text, nullable=True)
+    content = Column(Text, nullable=False)
+    category_id = Column(Integer, nullable=False)
+    writer_id = Column(Integer, nullable=False)
+    image_url = Column(String, nullable=True)
+    file_url = Column(String, nullable=True)
+    active = Column(Boolean, default=True)
+    order = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
 class GlossaryTerm(Base):
     """Termos do glossário tributário"""
     __tablename__ = "glossary_terms"
@@ -274,7 +304,7 @@ ChatModels = [ChatKnowledge, UnansweredQuestion, ChatSettings]
 # Modelos principais (para criar no PostgreSQL)
 MainModels = [User, News, NewsSource, PendingNews, BannerSlide, Settings, Newsletter,
               FiscalCalendar, WeeklyHighlight, CalculatorConfig, CalculatorParameters,
-              Document, FAQ, GlossaryTerm, Writer]
+              Document, FAQ, GlossaryTerm, Writer, ArticleCategory, Article]
 
 async def init_db():
     """Inicializa ambos os bancos de dados"""

@@ -269,6 +269,22 @@ export default function AdminDashboard() {
               </CardContent>
             </Card>
           </Link>
+
+          <Link href="/admin/artigos">
+            <Card className="bg-gray-800/50 border-gray-700 hover:border-[#FFD700] transition-all cursor-pointer group">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <FileText className="w-12 h-12 text-[#FFD700] group-hover:scale-110 transition-transform" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <CardTitle className="text-white mb-2">Artigos</CardTitle>
+                <p className="text-gray-400 text-sm">
+                  Gerenciar artigos e categorias de conteúdo
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
 
         <div className="mt-12">

@@ -464,3 +464,75 @@ class WriterResponse(WriterBase):
 
     class Config:
         from_attributes = True
+
+# Article Category schemas
+class ArticleCategoryBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+    slug: Optional[str] = None
+    active: bool = True
+    order: int = 0
+
+class ArticleCategoryCreate(ArticleCategoryBase):
+    pass
+
+class ArticleCategoryUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    slug: Optional[str] = None
+    active: Optional[bool] = None
+    order: Optional[int] = None
+
+class ArticleCategoryResponse(ArticleCategoryBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+# Article schemas
+class ArticleBase(BaseModel):
+    title: str
+    excerpt: Optional[str] = None
+    content: str
+    category_id: int
+    writer_id: int
+    image_url: Optional[str] = None
+    file_url: Optional[str] = None
+    active: bool = True
+    order: int = 0
+
+class ArticleCreate(ArticleBase):
+    pass
+
+class ArticleUpdate(BaseModel):
+    title: Optional[str] = None
+    excerpt: Optional[str] = None
+    content: Optional[str] = None
+    category_id: Optional[int] = None
+    writer_id: Optional[int] = None
+    image_url: Optional[str] = None
+    file_url: Optional[str] = None
+    active: Optional[bool] = None
+    order: Optional[int] = None
+
+class ArticleResponse(ArticleBase):
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class ArticleWithDetailsResponse(ArticleBase):
+    id: int
+    writer_name: Optional[str] = None
+    writer_role: Optional[str] = None
+    writer_image_url: Optional[str] = None
+    category_name: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
