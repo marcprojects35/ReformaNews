@@ -30,6 +30,7 @@ export function Header() {
   const [settings, setSettings] = useState({
     whatsapp_number: "",
     logo_url: "",
+    logo_size: "80",
     site_title: "Reforma News"
   })
 
@@ -47,6 +48,7 @@ export function Header() {
           setSettings({
             whatsapp_number: settingsMap.whatsapp_number || "",
             logo_url: settingsMap.logo_url || "",
+            logo_size: settingsMap.logo_size || "48",
             site_title: settingsMap.site_title || "Reforma News"
           })
         }
@@ -62,15 +64,14 @@ export function Header() {
     <>
       <header className="border-b border-gray-700 bg-gray-900/95 backdrop-blur-xl sticky top-0 z-50 shadow-lg shadow-gray-900/50 transition-colors">
         <div className="max-w-[1400px] mx-auto px-4">
-          <div className="flex items-center justify-between h-20">
+          <div className="flex items-center justify-between py-3">
             <div className="flex items-center gap-6">
               <Link href="/">
-                <Image
-                  src={settings.logo_url}
+                <img
+                  src={settings.logo_url.startsWith("/uploads/") ? `http://localhost:8001${settings.logo_url}` : settings.logo_url}
                   alt={settings.site_title}
-                  width={280}
-                  height={60}
-                  className="h-12 w-auto transition-transform hover:scale-105 duration-300 cursor-pointer"
+                  style={{ height: `${settings.logo_size}px`, width: "auto" }}
+                  className="transition-transform hover:scale-105 duration-300 cursor-pointer"
                 />
               </Link>
             </div>

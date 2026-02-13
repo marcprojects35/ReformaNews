@@ -140,6 +140,7 @@ class SettingResponse(SettingBase):
 class SettingsUpdateBulk(BaseModel):
     whatsapp_number: Optional[str] = None
     logo_url: Optional[str] = None
+    logo_size: Optional[str] = None
     site_title: Optional[str] = None
     newsapi_key: Optional[str] = None
 

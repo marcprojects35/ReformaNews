@@ -6,7 +6,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowLeft, Loader2, Save, Phone, Image as ImageIcon, Globe } from "lucide-react"
+import { ArrowLeft, Loader2, Save, Phone, Image as ImageIcon, Globe, Maximize2 } from "lucide-react"
 import { FileUpload } from "@/components/ui/file-upload"
 
 interface Setting {
@@ -25,6 +25,7 @@ export default function AdminSettings() {
   const [formData, setFormData] = useState({
     whatsapp_number: "",
     logo_url: "",
+    logo_size: "80",
     site_title: ""
   })
 
@@ -66,6 +67,7 @@ export default function AdminSettings() {
       setFormData({
         whatsapp_number: settingsMap.whatsapp_number || "",
         logo_url: settingsMap.logo_url || "",
+        logo_size: settingsMap.logo_size || "48",
         site_title: settingsMap.site_title || ""
       })
     } catch (error) {
@@ -184,6 +186,59 @@ export default function AdminSettings() {
                 placeholder="https://exemplo.com/logo.png"
                 required
               />
+            </CardContent>
+          </Card>
+
+          {/* Logo Size */}
+          <Card className="bg-gray-800/50 border-gray-700">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <Maximize2 className="w-5 h-5 text-[#FFD700]" />
+                Tamanho da Logo
+              </CardTitle>
+              <CardDescription className="text-gray-400">
+                Ajuste a altura da logo exibida no cabeçalho do site
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-4">
+                <span className="text-xs text-gray-400 w-8">32px</span>
+                <input
+                  type="range"
+                  min="32"
+                  max="200"
+                  step="4"
+                  value={formData.logo_size}
+                  onChange={(e) => setFormData({ ...formData, logo_size: e.target.value })}
+                  className="flex-1 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-[#FFD700]"
+                />
+                <span className="text-xs text-gray-400 w-10">200px</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-gray-300">
+                  Altura atual: <span className="text-[#FFD700] font-semibold">{formData.logo_size}px</span>
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, logo_size: "80" })}
+                  className="text-xs text-gray-400 hover:text-[#FFD700] transition-colors underline"
+                >
+                  Restaurar padrão (80px)
+                </button>
+              </div>
+              {formData.logo_url && (
+                <div className="p-3 bg-gray-900 rounded-lg">
+                  <p className="text-xs text-gray-400 mb-2">Preview:</p>
+                  <div className="bg-gray-800 rounded p-3 flex items-center justify-center">
+                    <img
+                      src={formData.logo_url.startsWith("/uploads/") ? `http://localhost:8001${formData.logo_url}` : formData.logo_url}
+                      alt="Preview da logo"
+                      style={{ height: `${formData.logo_size}px`, width: "auto" }}
+                      className="object-contain"
+                    />
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 

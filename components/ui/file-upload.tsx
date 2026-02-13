@@ -40,7 +40,7 @@ export function FileUpload({
     setUploadError(null)
 
     try {
-      const token = localStorage.getItem("token")
+      const token = localStorage.getItem("admin_token")
       const formData = new FormData()
       formData.append("file", file)
 
